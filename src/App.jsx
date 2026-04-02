@@ -156,7 +156,7 @@ export default function App() {
             <Calendar onClickDay={setSelectedDate} value={selectedDate} formatDay={(l, d) => d.getDate()} />
           </div>
           <div style={{ marginTop: '20px', padding: '20px', textAlign: 'center', background: 'white', borderRadius: '15px', color: '#888' }}>
-            📅 {selectedDate.toLocaleDateString()} 상세 일정 준비 중
+            📅 {selectedDate.toLocaleDateString()} 상세 기능 준비 중
           </div>
         </div>
       )}
