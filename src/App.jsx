@@ -133,7 +133,7 @@ export default function App() {
       {view === 'main' ? (
         <div>
           <div style={styles.header}>
-            <h2 style={styles.title}>🎖️ 지원대대 지원대</h2>
+            <h2 style={styles.title}>지원대대 지원대</h2>
             <div style={styles.inputArea}>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <select style={{...styles.input, flex: 1}} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
