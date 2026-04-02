@@ -1,59 +1,79 @@
 import { useState, useEffect } from 'react'
 import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css'
-import { initializeApp } from "firebase/app";
-import { getDatabase, ref, onValue, set, update } from "firebase/database";
 
-// Firebase 설정 (본인의 설정값으로 교체 필수)
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_ID",
-  appId: "YOUR_APP_ID"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+// Firebase 로직 제거 (주석 처리)
+// import { initializeApp } from "firebase/app";
+// import { getDatabase, ref, onValue, set, update } from "firebase/database";
 
 export default function App() {
-  const [members, setMembers] = useState([]);
-  const [vacations, setVacations] = useState([]);
+  // localStorage 복구
+  const [members, setMembers] = useState(() => JSON.parse(localStorage.getItem('katusa-members') || '[]'));
+  const [vacations, setVacations] = useState(() => JSON.parse(localStorage.getItem('katusa-vacations') || '[]'));
+  const [lastResetDate, setLastResetDate] = useState(() => localStorage.getItem('last-reset-date') || '');
+  
   const [view, setView] = useState('main'); 
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal] = useState(false); // + 버튼 누를 때만 true
   const [activeTab, setActiveTab] = useState('HHC');
 
   const [newName, setNewName] = useState('');
   const [newUnit, setNewUnit] = useState('HHC');
   const [newJoinDate, setNewJoinDate] = useState(new Date().toISOString().split('T')[0]);
-  
-  // 휴가 입력 상태 (시작일, 종료일 포함)
-  const [vacationInput, setVacationInput] = useState({ 
-    name: '', 
-    type: '연가', 
-    start: '', 
-    end: '' 
-  });
+  const [vacationInput, setVacationInput] = useState({ name: '', type: '연가' });
 
+  // 24시간 리셋 로직 (localStorage 기반 유지)
   useEffect(() => {
-    onValue(ref(db, 'members'), (s) => setMembers(s.val() ? Object.values(s.val()) : []));
-    onValue(ref(db, 'vacations'), (s) => setVacations(s.val() ? Object.values(s.val()) : []));
+    const today = new Date().toISOString().split('T')[0];
+    if (lastResetDate && lastResetDate !== today) {
+      setMembers(members.map(m => ({ ...m, status: '미복귀' })));
+    }
+    setLastResetDate(today);
+    localStorage.setItem('last-reset-date', today);
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem('katusa-members', JSON.stringify(members));
+    localStorage.setItem('katusa-vacations', JSON.stringify(vacations));
+  }, [members, vacations]);
+
+  // 대원 관리 로직
+  const addMember = () => {
+    if (!newName) return;
+    setMembers([...members, { id: Date.now(), name: newName, unit: newUnit, joinDate: newJoinDate, status: '미복귀' }]);
+    setNewName('');
+  };
+
+  const updateStatus = (id, currentStatus, targetStatus) => {
+    const nextStatus = currentStatus === targetStatus ? '미복귀' : targetStatus;
+    setMembers(members.map(m => m.id === id ? { ...m, status: nextStatus } : m));
+  };
+
+  const deleteMember = (id) => {
+    if (window.confirm("삭제하시겠습니까?")) setMembers(members.filter(m => m.id !== id));
+  };
+
+  // --- 휴가 관련 로직 (개선) ---
+  const getVacationersByDate = (date) => {
+    const d = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    return vacations.filter(v => d >= v.start && d <= v.end);
+  };
+
+  // 날짜 클릭 시: 명단만 확인 (팝업 안 띄움)
   const handleDateClick = (date) => {
-    const formatted = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
     setSelectedDate(date);
+  };
+
+  // [+] 버튼 클릭 시: 팝업 띄우고 날짜 자동 설정
+  const handleAddBtnClick = () => {
+    const formatted = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
     setVacationInput({ ...vacationInput, start: formatted, end: formatted });
     setShowModal(true);
   };
 
   const addVacation = () => {
     if (!vacationInput.name || !vacationInput.start || !vacationInput.end) return;
-    const id = Date.now();
-    set(ref(db, `vacations/${id}`), { ...vacationInput, id });
+    setVacations([...vacations, { ...vacationInput, id: Date.now() }]);
     setShowModal(false);
     setVacationInput({ name: '', type: '연가', start: '', end: '' });
   };
@@ -67,16 +87,23 @@ export default function App() {
   };
 
   const styles = {
-    container: { maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', fontFamily: '"Pretendard", sans-serif', color: '#333' },
-    header: { background: 'linear-gradient(135deg, #2d391e 0%, #1a230e 100%)', padding: '30px 20px 50px', borderRadius: '0 0 40px 40px', boxShadow: '0 10px 30px rgba(0,0,0,0.15)' },
-    nav: { display: 'flex', justifyContent: 'center', gap: '30px', marginBottom: '25px' },
-    navBtn: (active) => ({ background: 'none', border: 'none', color: active ? '#e9ce63' : 'rgba(255,255,255,0.4)', fontWeight: '800', fontSize: '18px', paddingBottom: '5px', borderBottom: active ? '3px solid #e9ce63' : 'none' }),
-    inputCard: { background: 'rgba(255,255,255,0.08)', padding: '20px', borderRadius: '25px', backdropFilter: 'blur(10px)' },
-    input: { width: '100%', padding: '14px', borderRadius: '15px', border: 'none', marginBottom: '10px', fontSize: '15px', outline: 'none' },
-    statsBar: { display: 'flex', justifyContent: 'space-around', background: 'white', margin: '-25px 20px 20px', padding: '20px', borderRadius: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' },
+    container: { maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', fontFamily: '"Pretendard", sans-serif' },
+    header: { background: 'linear-gradient(to bottom, #2d391e, #1a230e)', padding: '20px 20px 40px 20px', borderRadius: '0 0 40px 40px', textAlign: 'center' },
+    nav: { display: 'flex', justifyContent: 'space-around', marginBottom: '20px' },
+    navBtn: (active) => ({ background: 'none', border: 'none', padding: '10px', color: active ? '#e9ce63' : '#7d8a6b', fontWeight: 'bold', fontSize: '18px', borderBottom: active ? '3px solid #e9ce63' : 'none' }),
+    inputCard: { background: 'rgba(255,255,255,0.1)', padding: '20px', borderRadius: '25px' },
+    input: { width: '100%', padding: '12px', borderRadius: '12px', border: 'none', marginBottom: '10px', boxSizing: 'border-box' },
+    statsBar: { display: 'flex', justifyContent: 'space-around', background: 'white', margin: '-20px 20px 20px', padding: '20px', borderRadius: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' },
     card: { background: 'white', padding: '25px 20px', borderRadius: '30px', margin: '0 20px 15px', boxShadow: '0 8px 20px rgba(0,0,0,0.03)', textAlign: 'center', position: 'relative' },
-    statusBtn: (active, color) => ({ flex: 1, padding: '16px 0', borderRadius: '16px', border: 'none', background: active ? color : '#f1f3f5', color: active ? 'white' : '#888', fontWeight: '800', fontSize: '15px' }),
-    modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(8px)' }
+    statusBtn: (active, color) => ({ flex: 1, padding: '15px 0', borderRadius: '15px', border: 'none', background: active ? color : '#f1f3f5', color: active ? 'white' : '#888', fontWeight: 'bold', fontSize: '16px' }),
+    // 사진 속 팝업 디자인
+    modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(5px)' },
+    modalContent: { background: 'white', padding: '40px 30px', borderRadius: '35px', width: '85%', maxWidth: '380px', textAlign: 'center' },
+    modalTitle: { margin: '0 0 30px 0', fontSize: '20px', fontWeight: '700', color: '#333' },
+    modalInput: { width: '100%', padding: '15px', borderRadius: '15px', border: 'none', background: '#f1f3f5', marginBottom: '15px', fontSize: '16px', boxSizing: 'border-box' },
+    modalBtnGroup: { display: 'flex', gap: '10px', marginTop: '15px' },
+    modalBtnCancel: { flex: 1, padding: '16px', borderRadius: '15px', border: 'none', background: '#eee', color: '#555', fontWeight: 'bold', fontSize: '16px' },
+    modalBtnSubmit: { flex: 1, padding: '16px', borderRadius: '15px', border: 'none', background: '#25311b', color: 'white', fontWeight: 'bold', fontSize: '16px' }
   };
 
   const currentStats = (() => {
@@ -99,13 +126,13 @@ export default function App() {
         {view === 'main' && (
           <div style={styles.inputCard}>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <select style={{...styles.input, flex: 1}} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
+              <select style={styles.input} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
                 <option>HHC</option><option>Alpha</option><option>Bravo</option><option>Charlie</option>
               </select>
-              <input type="date" style={{...styles.input, flex: 1.5}} value={newJoinDate} onChange={e => setNewJoinDate(e.target.value)} />
+              <input type="date" style={styles.input} value={newJoinDate} onChange={e => setNewJoinDate(e.target.value)} />
             </div>
-            <input style={styles.input} placeholder="대원 성함 입력" value={newName} onChange={e => setNewName(e.target.value)} />
-            <button style={{...styles.input, background: '#e9ce63', color: '#1a2e05', fontWeight: '800', marginBottom: 0}} onClick={() => { if(newName){ set(ref(db, `members/${Date.now()}`), { id: Date.now(), name: newName, unit: newUnit, joinDate: newJoinDate, status: '미복귀' }); setNewName(''); } }}>대원 추가</button>
+            <input style={styles.input} placeholder="대원 성함" value={newName} onChange={e => setNewName(e.target.value)} />
+            <button style={{...styles.input, background:'#e9ce63', fontWeight:'bold', marginBottom:0}} onClick={addMember}>대원 추가</button>
           </div>
         )}
       </div>
@@ -114,24 +141,24 @@ export default function App() {
         <div style={{ marginTop: '40px' }}>
           <div style={{ display: 'flex', gap: '10px', padding: '0 20px 20px', overflowX: 'auto' }}>
             {['HHC', 'Alpha', 'Bravo', 'Charlie'].map(u => (
-              <button key={u} style={{ padding: '10px 22px', borderRadius: '20px', border: 'none', background: activeTab === u ? '#25311b' : 'white', color: activeTab === u ? '#e9ce63' : '#555', fontWeight: 'bold', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }} onClick={() => setActiveTab(u)}>{u}</button>
+              <button key={u} style={{ padding: '10px 20px', borderRadius: '15px', border: 'none', background: activeTab === u ? '#25311b' : 'white', color: activeTab === u ? '#e9ce63' : '#555', fontWeight: 'bold' }} onClick={() => setActiveTab(u)}>{u}</button>
             ))}
           </div>
 
           <div style={styles.statsBar}>
-            <div style={{textAlign:'center'}}><span style={{fontSize:'12px', color:'#aaa'}}>총원</span><br/><b style={{fontSize:'18px'}}>{currentStats.total}</b></div>
-            <div style={{textAlign:'center'}}><span style={{fontSize:'12px', color:'#aaa'}}>복귀</span><br/><b style={{color:'#2ecc71', fontSize:'18px'}}>{currentStats.returned}</b></div>
-            <div style={{textAlign:'center'}}><span style={{fontSize:'12px', color:'#aaa'}}>미복귀</span><br/><b style={{color:'#e74c3c', fontSize:'18px'}}>{currentStats.notReturned}</b></div>
-            <div style={{textAlign:'center'}}><span style={{fontSize:'12px', color:'#aaa'}}>잔류</span><br/><b style={{color:'#3498db', fontSize:'18px'}}>{currentStats.stay}</b></div>
+            <div style={{textAlign:'center'}}><span style={{fontSize:'12px', color:'#aaa'}}>총원</span><br/><b>{currentStats.total}</b></div>
+            <div style={{textAlign:'center'}}><span style={{fontSize:'12px', color:'#aaa'}}>복귀</span><br/><b style={{color:'#2ecc71'}}>{currentStats.returned}</b></div>
+            <div style={{textAlign:'center'}}><span style={{fontSize:'12px', color:'#aaa'}}>미복귀</span><br/><b style={{color:'#e74c3c'}}>{currentStats.notReturned}</b></div>
+            <div style={{textAlign:'center'}}><span style={{fontSize:'12px', color:'#aaa'}}>잔류</span><br/><b style={{color:'#3498db'}}>{currentStats.stay}</b></div>
           </div>
 
           {members.filter(m => m.unit === activeTab).map(m => (
             <div key={m.id} style={styles.card}>
-              <button style={{position:'absolute', top:'20px', right:'20px', border:'none', background:'none', color:'#eee', fontSize:'22px'}} onClick={() => { if(window.confirm("삭제할까요?")) set(ref(db, `members/${m.id}`), null); }}>✕</button>
-              <div style={{fontSize: '22px', fontWeight: '800', marginBottom: '18px'}}>{m.name} <span style={{fontSize: '14px', color: '#bbb', fontWeight: '400'}}>{calculatePercent(m.joinDate)}%</span></div>
+              <button style={{position:'absolute', top:'20px', right:'20px', border:'none', background:'none', color:'#eee', fontSize:'20px'}} onClick={() => deleteMember(m.id)}>✕</button>
+              <div style={{fontSize: '21px', fontWeight: '800', marginBottom: '15px'}}>{m.name} <span style={{fontSize: '14px', color: '#bbb'}}>{calculatePercent(m.joinDate)}%</span></div>
               <div style={{display: 'flex', gap: '10px'}}>
-                <button style={styles.statusBtn(m.status === '복귀', '#2ecc71')} onClick={() => update(ref(db, `members/${m.id}`), { status: m.status === '복귀' ? '미복귀' : '복귀' })}>복귀</button>
-                <button style={styles.statusBtn(m.status === '잔류', '#3498db')} onClick={() => update(ref(db, `members/${m.id}`), { status: m.status === '잔류' ? '미복귀' : '잔류' })}>잔류</button>
+                <button style={styles.statusBtn(m.status === '복귀', '#2ecc71')} onClick={() => updateStatus(m.id, m.status, '복귀')}>복귀</button>
+                <button style={styles.statusBtn(m.status === '잔류', '#3498db')} onClick={() => updateStatus(m.id, m.status, '잔류')}>잔류</button>
               </div>
             </div>
           ))}
@@ -148,55 +175,45 @@ export default function App() {
             />
           </div>
           <div style={{ background: 'white', padding: '25px', borderRadius: '30px', marginTop: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-            <h3 style={{ margin: '0 0 15px 0', fontSize: '17px', fontWeight:'800' }}>🚩 {selectedDate.toLocaleDateString()} 휴가 인원</h3>
-            {vacations.filter(v => {
-              const d = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-              return d >= v.start && d <= v.end;
-            }).map(v => (
-              <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', background: '#f8f9fa', padding: '15px', borderRadius: '15px', marginBottom: '10px' }}>
-                <span><strong>{v.name}</strong> <small style={{color:'#e74c3c', marginLeft:'5px'}}>{v.type}</small></span>
-                <button style={{ border: 'none', background: 'none', color: '#ccc' }} onClick={() => set(ref(db, `vacations/${v.id}`), null)}>✕</button>
-              </div>
-            ))}
+            {/* 제목 옆 [+] 버튼 추가 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight:'800', color: '#25311b' }}>🚩 {selectedDate.toLocaleDateString()} 휴가 인원</h3>
+                <button style={{ background: '#25311b', color: '#e9ce63', border: 'none', width: '30px', height: '30px', borderRadius: '50%', fontSize: '20px', fontWeight: 'bold' }} onClick={handleAddBtnClick}>+</button>
+            </div>
+            {getVacationersByDate(selectedDate).length === 0 ? (
+                <p style={{textAlign:'center', color:'#ccc', fontSize:'14px', margin:'20px 0'}}>[+] 버튼을 눌러 휴가자를 등록하세요</p>
+            ) : (
+                getVacationersByDate(selectedDate).map(v => (
+                <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', background: '#f8f9fa', padding: '15px', borderRadius: '15px', marginBottom: '10px' }}>
+                    <span><strong>{v.name}</strong> <small style={{color:'#e74c3c', marginLeft:'5px'}}>{v.type}</small></span>
+                    <button style={{ border: 'none', background: 'none', color: '#ccc' }} onClick={() => setVacations(vacations.filter(x => x.id !== v.id))}>✕</button>
+                </div>
+                ))
+            )}
           </div>
         </div>
       )}
 
+      {/* 사진 속 깔끔한 팝업 디자인 복구 */}
       {showModal && (
         <div style={styles.modalOverlay} onClick={() => setShowModal(false)}>
-          <div style={{ background: 'white', padding: '30px', borderRadius: '35px', width: '85%', maxWidth: '380px' }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px', textAlign: 'center', fontWeight:'800' }}>📅 휴가 기간 설정</h3>
-            
-            <label style={{fontSize:'12px', color:'#888', marginLeft:'5px'}}>이름</label>
-            <input style={{...styles.input, background:'#f1f3f5'}} placeholder="성함" value={vacationInput.name} onChange={e => setVacationInput({...vacationInput, name: e.target.value})} />
-            
-            <label style={{fontSize:'12px', color:'#888', marginLeft:'5px'}}>휴가 종류</label>
-            <input style={{...styles.input, background:'#f1f3f5'}} placeholder="연가, 외출, 청원 등" value={vacationInput.type} onChange={e => setVacationInput({...vacationInput, type: e.target.value})} />
-            
-            <div style={{display:'flex', gap:'10px', marginBottom:'20px'}}>
-              <div style={{flex:1}}>
-                <label style={{fontSize:'12px', color:'#888', marginLeft:'5px'}}>시작일</label>
-                <input type="date" style={{...styles.input, background:'#f1f3f5', marginBottom:0}} value={vacationInput.start} onChange={e => setVacationInput({...vacationInput, start: e.target.value})} />
-              </div>
-              <div style={{flex:1}}>
-                <label style={{fontSize:'12px', color:'#888', marginLeft:'5px'}}>종료일</label>
-                <input type="date" style={{...styles.input, background:'#f1f3f5', marginBottom:0}} value={vacationInput.end} onChange={e => setVacationInput({...vacationInput, end: e.target.value})} />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button style={{ flex: 1, padding: '16px', borderRadius: '15px', border: 'none', background: '#eee', fontWeight: 'bold' }} onClick={() => setShowModal(false)}>취소</button>
-              <button style={{ flex: 1, padding: '16px', borderRadius: '15px', border: 'none', background: '#25311b', color: '#e9ce63', fontWeight: 'bold' }} onClick={addVacation}>등록하기</button>
+          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>{selectedDate.toLocaleDateString()} 휴가 등록</h3>
+            <input style={styles.modalInput} placeholder="이름" value={vacationInput.name} onChange={e => setVacationInput({...vacationInput, name: e.target.value})} />
+            <input style={styles.modalInput} placeholder="휴가 종류 (연가, 청원 등)" value={vacationInput.type} onChange={e => setVacationInput({...vacationInput, type: e.target.value})} />
+            <div style={styles.modalBtnGroup}>
+              <button style={styles.modalBtnCancel} onClick={() => setShowModal(false)}>취소</button>
+              <button style={styles.modalBtnSubmit} onClick={addVacation}>등록</button>
             </div>
           </div>
         </div>
       )}
 
       <style>{`
-        .react-calendar { width: 100% !important; border: none !important; font-family: inherit !important; }
+        .react-calendar { width: 100% !important; border: none !important; }
         .react-calendar__tile--active { background: #25311b !important; border-radius: 12px !important; color: #e9ce63 !important; }
-        .react-calendar__tile--now { background: #fdf3d0 !important; border-radius: 12px !important; color: #25311b !important; }
-        .react-calendar__navigation button { font-weight: 800; font-size: 16px; }
+        .react-calendar__tile--now { background: #fdf3d0 !important; border-radius: 12px !important; }
+        .react-calendar__navigation button { font-weight: bold; font-size: 16px; }
       `}</style>
     </div>
   );
