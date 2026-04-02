@@ -4,7 +4,7 @@ import 'react-calendar/dist/Calendar.css'
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, update, remove } from 'firebase/database';
 
-// ⚠️ 분대장님의 실제 Firebase Config를 꼭 넣어주세요!
+// ⚠️ 분대장님의 실제 Firebase Config를 꼭 확인 후 유지하세요!
 const firebaseConfig = {
   apiKey: "AIzaSyBbqaA06Uq05IFDbWDOMeBOlRy2eqF0OR0E",
   authDomain: "armyapp-f95eb.firebaseapp.com",
@@ -20,7 +20,7 @@ const db = getDatabase(app);
 
 export default function App() {
   const [members, setMembers] = useState([]);
-  const [view, setView] = useState('main'); // 'main' 또는 'calendar'
+  const [view, setView] = useState('main'); 
   const [activeTab, setActiveTab] = useState('HHC');
   const [selectedDate, setSelectedDate] = useState(new Date());
 
@@ -68,36 +68,56 @@ export default function App() {
   };
 
   const styles = {
-    container: { maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '60px' },
-    header: { background: '#2d391e', padding: '20px', borderRadius: '0 0 25px 25px', color: 'white', textAlign: 'center' },
-    navTabContainer: { display: 'flex', background: '#fff', margin: '0 15px', borderRadius: '15px', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginTop: '-20px' },
-    navTab: (active) => ({ flex: 1, padding: '15px', border: 'none', background: active ? '#e9ce63' : '#fff', color: active ? '#2d391e' : '#888', fontWeight: 'bold', cursor: 'pointer' }),
-    statsBar: { display: 'flex', justifyContent: 'space-around', background: 'white', margin: '15px', padding: '15px', borderRadius: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.03)' },
-    card: { background: 'white', padding: '15px', borderRadius: '15px', margin: '10px 15px', boxShadow: '0 2px 5px rgba(0,0,0,0.02)', position: 'relative' },
-    statusBtn: (active, color) => ({ flex: 1, padding: '12px 0', borderRadius: '10px', border: 'none', background: active ? color : '#f1f3f5', color: active ? 'white' : '#777', fontWeight: 'bold', cursor: 'pointer' })
+    container: { maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '60px', fontFamily: 'sans-serif' },
+    // 헤더: 높이를 넉넉히 주어 입력창이 탭과 겹치지 않게 함
+    header: { background: '#2d391e', padding: '30px 20px 50px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' },
+    // 탭 메뉴: 헤더와 카드 리스트 사이에 자연스럽게 배치
+    navTabContainer: { 
+      display: 'flex', 
+      background: '#fff', 
+      margin: '-30px 20px 15px 20px', 
+      borderRadius: '15px', 
+      overflow: 'hidden', 
+      boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
+      position: 'relative',
+      zIndex: 10
+    },
+    navTab: (active) => ({ 
+      flex: 1, padding: '16px', border: 'none', 
+      background: active ? '#e9ce63' : '#fff', 
+      color: active ? '#2d391e' : '#888', 
+      fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' 
+    }),
+    statsBar: { display: 'flex', justifyContent: 'space-around', background: 'white', margin: '15px', padding: '15px', borderRadius: '15px', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' },
+    card: { background: 'white', padding: '18px', borderRadius: '20px', margin: '12px 15px', boxShadow: '0 2px 5px rgba(0,0,0,0.02)', position: 'relative' },
+    statusBtn: (active, color) => ({ 
+      flex: 1, padding: '14px 0', borderRadius: '10px', border: 'none', 
+      background: active ? color : '#f1f3f5', color: active ? 'white' : '#777', 
+      fontWeight: 'bold', cursor: 'pointer', transition: '0.2s'
+    }),
+    input: { padding: '12px', borderRadius: '10px', border: 'none', fontSize: '14px', outline: 'none' }
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h2 style={{ margin: '0 0 25px 0', color: '#e9ce63' }}>Katusa Tracker</h2>
+        <h2 style={{ margin: '0 0 25px 0', color: '#e9ce63', letterSpacing: '1px' }}>Katusa Tracker</h2>
         {view === 'main' && (
           <div style={{ display: 'grid', gap: '10px' }}>
-             <div style={{ display: 'flex', gap: '5px' }}>
-                <select style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none' }} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
+             <div style={{ display: 'flex', gap: '8px' }}>
+                <select style={{ ...styles.input, flex: 1 }} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
                   {['HHC', 'Alpha', 'Bravo', 'Charlie'].map(u => <option key={u}>{u}</option>)}
                 </select>
-                <input type="date" style={{ flex: 1.5, padding: '10px', borderRadius: '8px', border: 'none' }} value={newJoinDate} onChange={e => setNewJoinDate(e.target.value)} />
+                <input type="date" style={{ ...styles.input, flex: 1.5 }} value={newJoinDate} onChange={e => setNewJoinDate(e.target.value)} />
              </div>
-             <div style={{ display: 'flex', gap: '5px' }}>
-                <input style={{ flex: 3, padding: '10px', borderRadius: '8px', border: 'none' }} placeholder="성명" value={newName} onChange={e => setNewName(e.target.value)} />
-                <button style={{ flex: 1, background: '#e9ce63', border: 'none', borderRadius: '8px', fontWeight: 'bold' }} onClick={addMember}>추가</button>
+             <div style={{ display: 'flex', gap: '8px' }}>
+                <input style={{ ...styles.input, flex: 3 }} placeholder="성명" value={newName} onChange={e => setNewName(e.target.value)} />
+                <button style={{ flex: 1, background: '#e9ce63', border: 'none', borderRadius: '10px', fontWeight: 'bold', color: '#2d391e', cursor: 'pointer' }} onClick={addMember}>추가</button>
              </div>
           </div>
         )}
       </div>
 
-      {/* 상단 탭 전환 메뉴 */}
       <div style={styles.navTabContainer}>
         <button style={styles.navTab(view === 'main')} onClick={() => setView('main')}>부대 관리</button>
         <button style={styles.navTab(view === 'calendar')} onClick={() => setView('calendar')}>휴가 일정</button>
@@ -105,25 +125,27 @@ export default function App() {
 
       {view === 'main' ? (
         <>
-          <div style={{ display: 'flex', gap: '8px', padding: '15px 15px 0', overflowX: 'auto' }}>
+          <div style={{ display: 'flex', gap: '8px', padding: '10px 20px 5px', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
             {['HHC', 'Alpha', 'Bravo', 'Charlie'].map(u => (
-              <button key={u} style={{ padding: '8px 15px', borderRadius: '15px', border: 'none', background: activeTab === u ? '#2d391e' : '#fff', color: activeTab === u ? '#e9ce63' : '#555', fontWeight: 'bold', whiteSpace: 'nowrap' }} onClick={() => setActiveTab(u)}>{u}</button>
+              <button key={u} style={{ padding: '8px 18px', borderRadius: '20px', border: 'none', background: activeTab === u ? '#2d391e' : '#fff', color: activeTab === u ? '#e9ce63' : '#555', fontWeight: 'bold', whiteSpace: 'nowrap', fontSize: '13px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }} onClick={() => setActiveTab(u)}>{u}</button>
             ))}
           </div>
 
           <div style={styles.statsBar}>
-            <div style={{textAlign:'center'}}><small>총원</small><br/><b>{stats.total}</b></div>
-            <div style={{textAlign:'center'}}><small>복귀</small><br/><b style={{color:'#2ecc71'}}>{stats.returned}</b></div>
-            <div style={{textAlign:'center'}}><small>미복귀</small><br/><b style={{color:'#e74c3c'}}>{stats.notReturned}</b></div>
-            <div style={{textAlign:'center'}}><small>잔류</small><br/><b style={{color:'#3498db'}}>{stats.stay}</b></div>
+            <div style={{textAlign:'center'}}><small style={{color:'#999'}}>총원</small><br/><b>{stats.total}</b></div>
+            <div style={{textAlign:'center'}}><small style={{color:'#999'}}>복귀</small><br/><b style={{color:'#2ecc71'}}>{stats.returned}</b></div>
+            <div style={{textAlign:'center'}}><small style={{color:'#999'}}>미복귀</small><br/><b style={{color:'#e74c3c'}}>{stats.notReturned}</b></div>
+            <div style={{textAlign:'center'}}><small style={{color:'#999'}}>잔류</small><br/><b style={{color:'#3498db'}}>{stats.stay}</b></div>
           </div>
 
           {currentMembers.sort((a,b) => new Date(a.joinDate) - new Date(b.joinDate)).map(m => (
             <div key={m.id} style={styles.card}>
-              <button style={{ position:'absolute', top:'15px', right:'15px', border:'none', background:'none', color:'#ddd' }} onClick={() => remove(ref(db, `members/${m.id}`))}>✕</button>
-              <div style={{ marginBottom: '10px', fontWeight: 'bold' }}>{m.name} <small style={{color:'#999'}}>{calculatePercent(m.joinDate)}%</small></div>
-              <div style={{ width: '100%', height: '5px', background: '#eee', borderRadius: '3px', marginBottom: '15px', overflow: 'hidden' }}>
-                <div style={{ width: `${calculatePercent(m.joinDate)}%`, height: '100%', background: '#73c088' }} />
+              <button style={{ position:'absolute', top:'18px', right:'18px', border:'none', background:'none', color:'#ddd', fontSize: '18px', cursor: 'pointer' }} onClick={() => remove(ref(db, `members/${m.id}`))}>✕</button>
+              <div style={{ marginBottom: '12px', fontWeight: 'bold', fontSize: '18px' }}>
+                {m.name} <span style={{ fontSize: '12px', color: '#bbb', fontWeight: 'normal' }}>{calculatePercent(m.joinDate)}%</span>
+              </div>
+              <div style={{ width: '100%', height: '6px', background: '#eee', borderRadius: '3px', marginBottom: '20px', overflow: 'hidden' }}>
+                <div style={{ width: `${calculatePercent(m.joinDate)}%`, height: '100%', background: '#73c088', transition: 'width 0.5s' }} />
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button style={styles.statusBtn(m.status === '복귀', '#2ecc71')} onClick={() => handleStatusUpdate(m.id, '복귀')}>복귀</button>
@@ -135,18 +157,22 @@ export default function App() {
         </>
       ) : (
         <div style={{ padding: '20px' }}>
-          <div style={{ background: 'white', borderRadius: '20px', padding: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
-            <Calendar onClickDay={setSelectedDate} value={selectedDate} />
+          <div style={{ background: 'white', borderRadius: '25px', padding: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
+            <Calendar onClickDay={setSelectedDate} value={selectedDate} formatDay={(l, d) => d.getDate()} />
           </div>
-          <p style={{ textAlign: 'center', marginTop: '20px', color: '#888' }}>준비 중인 기능입니다: 날짜별 상세 일정</p>
+          <div style={{ marginTop: '20px', padding: '20px', textAlign: 'center', background: 'white', borderRadius: '15px', color: '#888' }}>
+            {selectedDate.toLocaleDateString()} 상세 기능 준비 중
+          </div>
         </div>
       )}
 
-      {/* 진짜 앱처럼 보이게 하는 모바일 최적화 스타일 */}
       <style>{`
-        body { margin: 0; background: #f8f9fa; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-        .react-calendar { width: 100% !important; border: none !important; font-family: sans-serif; }
-        .react-calendar__tile--active { background: #2d391e !important; color: #e9ce63 !important; border-radius: 8px; }
+        body { margin: 0; background: #f8f9fa; -webkit-tap-highlight-color: transparent; }
+        .react-calendar { width: 100% !important; border: none !important; border-radius: 15px; overflow: hidden; }
+        .react-calendar__navigation { margin-bottom: 15px; }
+        .react-calendar__tile--active { background: #2d391e !important; color: #e9ce63 !important; border-radius: 10px; }
+        * { user-select: none; -webkit-user-drag: none; }
+        input, select { user-select: auto !important; }
       `}</style>
     </div>
   );
