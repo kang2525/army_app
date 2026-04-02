@@ -1,0 +1,70 @@
+/* 기존 스타일 유지 및 아래 내용 추가/수정 */
+.tile-summary {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.vacation-dot {
+  background: #e74c3c;
+  color: white;
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  width: 90%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+/* 하단 상세 정보 패널 */
+.date-detail-panel {
+  background: white;
+  margin-top: 15px;
+  padding: 20px;
+  border-radius: 25px 25px 0 0;
+  box-shadow: 0 -10px 20px rgba(0,0,0,0.05);
+  min-height: 200px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.panel-header h3 { font-size: 18px; margin: 0; color: #1a2e05; }
+
+.add-v-btn {
+  background: #1a2e05;
+  color: #e9ce63;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+.vacation-info-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+
+.vacation-info-card strong { font-size: 16px; }
+.vacation-info-card span { color: #e74c3c; font-weight: bold; font-size: 14px; }
+
+.del-v-btn {
+  background: none;
+  border: none;
+  color: #ccc;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.empty-msg { text-align: center; color: #aaa; margin-top: 30px; }
