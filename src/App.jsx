@@ -6,14 +6,16 @@ import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set } from 'firebase/database';
 
 // 1. Firebase 설정 (본인의 Firebase 콘솔에서 프로젝트 생성 후 아래 내용을 채워주세요)
+// App.jsx 상단에 본인의 정보를 이렇게 업데이트하세요
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyBbqaA06Uq05IFDbWDOMeBOlRy2eqF0OR0E",
+  authDomain: "armyapp-f95eb.firebaseapp.com",
+  // 바로 이 부분을 지금 찾으신 주소로 넣으세요!
+  databaseURL: "https://armyapp-f95eb-default-rtdb.asia-southeast1.firebasedatabase.app/", 
+  projectId: "armyapp-f95eb",
+  storageBucket: "armyapp-f95eb.firebasestorage.app",
+  messagingSenderId: "985720950178",
+  appId: "1:985720950178:web:4a4c0cc37a21a56d0576fb"
 };
 
 const app = initializeApp(firebaseConfig);
