@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react'
-import Calendar from 'react-calendar'
-import 'react-calendar/dist/Calendar.css'
 import { initializeApp } from 'firebase/app';
-// 1. 필요한 함수들을 정확히 임포트합니다.
 import { getDatabase, ref, onValue, set, update, remove } from 'firebase/database';
 
+// ⚠️ 분대장님의 실제 Config를 유지하세요!
 const firebaseConfig = {
   apiKey: "AIzaSyBbqaA06Uq05IFDbWDOMeBOlRy2eqF0OR0E",
   authDomain: "armyapp-f95eb.firebaseapp.com",
@@ -20,9 +18,9 @@ const db = getDatabase(app);
 
 export default function App() {
   const [members, setMembers] = useState([]);
-  const [view, setView] = useState('main'); 
   const [activeTab, setActiveTab] = useState('HHC');
   const [newName, setNewName] = useState('');
+  const [newUnit, setNewUnit] = useState('HHC');
   const [newJoinDate, setNewJoinDate] = useState(new Date().toISOString().split('T')[0]);
 
   // 실시간 데이터 읽기
@@ -31,10 +29,9 @@ export default function App() {
     return onValue(membersRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        // 객체 형태를 배열로 변환
         const memberList = Object.keys(data).map(key => ({
           ...data[key],
-          id: key // Firebase 키값을 id로 사용
+          id: key 
         }));
         setMembers(memberList);
       } else {
@@ -43,33 +40,34 @@ export default function App() {
     });
   }, []);
 
-  // 2. 상태 변경 함수 (더 확실한 경로 지정)
+  // 상태 변경 (복귀/미복귀/잔류) - 클릭 즉시 반영
   const handleStatusUpdate = (memberId, newStatus) => {
-    if (!memberId) return;
     const memberRef = ref(db, `members/${memberId}`);
-    update(memberRef, { status: newStatus })
-      .then(() => console.log("업데이트 성공"))
-      .catch((error) => alert("오류 발생: " + error.message));
+    update(memberRef, { status: newStatus });
   };
 
-  // 대원 추가 함수
+  // 대원 추가
   const addMember = () => {
     if (!newName) return;
-    const id = Date.now().toString(); // 고유 ID 생성
+    const id = Date.now().toString();
     set(ref(db, `members/${id}`), {
       id: id,
       name: newName,
-      unit: activeTab,
+      unit: newUnit, // 선택된 부대 저장
       joinDate: newJoinDate,
       status: '미복귀'
     });
     setNewName('');
   };
 
+  // 대원 삭제
   const deleteMember = (id) => {
-    remove(ref(db, `members/${id}`));
+    if(window.confirm("정말 삭제하시겠습니까?")) {
+      remove(ref(db, `members/${id}`));
+    }
   };
 
+  // 퍼센트 계산 (18개월 기준)
   const calculatePercent = (joinDate) => {
     if(!joinDate) return "0";
     const start = new Date(joinDate);
@@ -80,7 +78,7 @@ export default function App() {
     return Math.min(100, Math.max(0, p)).toFixed(1);
   };
 
-  // 통계 계산
+  // 현재 탭의 인원 및 통계
   const currentMembers = members.filter(m => m.unit === activeTab);
   const stats = {
     total: currentMembers.length,
@@ -90,87 +88,69 @@ export default function App() {
   };
 
   const styles = {
-    container: { maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '50px' },
-    header: { background: '#2d391e', padding: '20px', color: 'white', borderRadius: '0 0 20px 20px' },
-    statsBar: { display: 'flex', justifyContent: 'space-around', background: 'white', margin: '15px', padding: '15px', borderRadius: '15px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' },
-    card: { background: 'white', padding: '15px', borderRadius: '15px', margin: '10px 15px', boxShadow: '0 2px 5px rgba(0,0,0,0.03)' },
-    // 클릭 영역 확보를 위해 padding을 키우고 터치 강조를 넣었습니다.
+    container: { maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f1f3f5', paddingBottom: '40px' },
+    header: { background: '#2d391e', padding: '20px', borderRadius: '0 0 25px 25px', color: 'white', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' },
+    inputGroup: { display: 'grid', gap: '8px', marginTop: '15px' },
+    statsBar: { display: 'flex', justifyContent: 'space-around', background: 'white', margin: '15px', padding: '15px', borderRadius: '15px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' },
+    card: { background: 'white', padding: '18px', borderRadius: '20px', margin: '12px 15px', boxShadow: '0 2px 5px rgba(0,0,0,0.02)', position: 'relative' },
     statusBtn: (active, color) => ({ 
-      flex: 1, 
-      padding: '15px 0', 
-      borderRadius: '10px', 
-      border: 'none', 
-      background: active ? color : '#eee', 
-      color: active ? 'white' : '#777', 
-      fontWeight: 'bold',
-      cursor: 'pointer',
-      fontSize: '14px',
-      WebkitTapHighlightColor: 'rgba(0,0,0,0)' 
+      flex: 1, padding: '14px 0', borderRadius: '12px', border: 'none', 
+      background: active ? color : '#f1f3f5', color: active ? 'white' : '#888', 
+      fontWeight: 'bold', cursor: 'pointer', WebkitTapHighlightColor: 'transparent'
     })
   };
 
   return (
     <div style={styles.container}>
+      {/* 상단 입력부 (복구 완료) */}
       <div style={styles.header}>
-        <h3 style={{ textAlign: 'center', margin: '0 0 20px 0' }}>분대 관리 시스템</h3>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <input 
-            style={{ flex: 2, padding: '12px', borderRadius: '10px', border: 'none' }} 
-            placeholder="이름" 
-            value={newName} 
-            onChange={e => setNewName(e.target.value)} 
-          />
-          <button 
-            style={{ flex: 1, background: '#e9ce63', border: 'none', borderRadius: '10px', fontWeight: 'bold' }} 
-            onClick={addMember}
-          >추가</button>
+        <h3 style={{ textAlign: 'center', margin: '0 0 15px 0', color: '#e9ce63' }}>Katusa Tracker</h3>
+        <div style={styles.inputGroup}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <select style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none' }} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
+              {['HHC', 'Alpha', 'Bravo', 'Charlie'].map(u => <option key={u}>{u}</option>)}
+            </select>
+            <input type="date" style={{ flex: 1.5, padding: '10px', borderRadius: '10px', border: 'none' }} value={newJoinDate} onChange={e => setNewJoinDate(e.target.value)} />
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <input style={{ flex: 3, padding: '10px', borderRadius: '10px', border: 'none' }} placeholder="성명 입력" value={newName} onChange={e => setNewName(e.target.value)} />
+            <button style={{ flex: 1, background: '#e9ce63', border: 'none', borderRadius: '10px', fontWeight: 'bold', color: '#2d391e' }} onClick={addMember}>대원 추가</button>
+          </div>
         </div>
       </div>
 
       {/* 부대 선택 탭 */}
-      <div style={{ display: 'flex', gap: '10px', padding: '15px', overflowX: 'auto' }}>
+      <div style={{ display: 'flex', gap: '8px', padding: '15px 15px 5px', overflowX: 'auto' }}>
         {['HHC', 'Alpha', 'Bravo', 'Charlie'].map(u => (
-          <button 
-            key={u} 
-            style={{ padding: '8px 20px', borderRadius: '20px', border: 'none', background: activeTab === u ? '#2d391e' : 'white', color: activeTab === u ? '#e9ce63' : '#555' }} 
-            onClick={() => setActiveTab(u)}
-          >{u}</button>
+          <button key={u} style={{ padding: '8px 18px', borderRadius: '20px', border: 'none', background: activeTab === u ? '#2d391e' : 'white', color: activeTab === u ? '#e9ce63' : '#555', fontWeight: 'bold', whiteSpace: 'nowrap' }} onClick={() => setActiveTab(u)}>{u}</button>
         ))}
       </div>
 
-      {/* 통계 수치 */}
+      {/* 실시간 인원 통계 */}
       <div style={styles.statsBar}>
-        <div style={{textAlign:'center'}}><small>총원</small><br/><b>{stats.total}</b></div>
-        <div style={{textAlign:'center'}}><small>복귀</small><br/><b style={{color:'#2ecc71'}}>{stats.returned}</b></div>
-        <div style={{textAlign:'center'}}><small>미복귀</small><br/><b style={{color:'#e74c3c'}}>{stats.notReturned}</b></div>
-        <div style={{textAlign:'center'}}><small>잔류</small><br/><b style={{color:'#3498db'}}>{stats.stay}</b></div>
+        <div style={{textAlign:'center'}}><small style={{color:'#999'}}>총원</small><br/><b>{stats.total}</b></div>
+        <div style={{textAlign:'center'}}><small style={{color:'#999'}}>복귀</small><br/><b style={{color:'#2ecc71'}}>{stats.returned}</b></div>
+        <div style={{textAlign:'center'}}><small style={{color:'#999'}}>미복귀</small><br/><b style={{color:'#e74c3c'}}>{stats.notReturned}</b></div>
+        <div style={{textAlign:'center'}}><small style={{color:'#999'}}>잔류</small><br/><b style={{color:'#3498db'}}>{stats.stay}</b></div>
       </div>
 
-      {/* 대원 리스트 */}
+      {/* 대원 카드 리스트 (짬순 정렬) */}
       {currentMembers.sort((a,b) => new Date(a.joinDate) - new Date(b.joinDate)).map(m => (
         <div key={m.id} style={styles.card}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-            <span style={{ fontWeight: 'bold' }}>{m.name} <small style={{color:'#999'}}>{calculatePercent(m.joinDate)}%</small></span>
-            <button style={{ border: 'none', background: 'none', color: '#ddd' }} onClick={() => deleteMember(m.id)}>✕</button>
-          </div>
+          <button style={{ position:'absolute', top:'15px', right:'15px', border:'none', background:'none', color:'#ddd', fontSize: '18px' }} onClick={() => deleteMember(m.id)}>✕</button>
           
-          <div style={{ width: '100%', height: '4px', background: '#eee', borderRadius: '2px', marginBottom: '15px' }}>
-            <div style={{ width: `${calculatePercent(m.joinDate)}%`, height: '100%', background: '#73c088' }} />
+          <div style={{ marginBottom: '12px', fontSize: '18px', fontWeight: 'bold' }}>
+            {m.name} <span style={{ fontSize: '12px', color: '#999', fontWeight: 'normal' }}>{calculatePercent(m.joinDate)}%</span>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button 
-              style={styles.statusBtn(m.status === '복귀', '#2ecc71')} 
-              onClick={() => handleStatusUpdate(m.id, '복귀')}
-            >복귀</button>
-            <button 
-              style={styles.statusBtn(m.status === '미복귀' || !m.status, '#e74c3c')} 
-              onClick={() => handleStatusUpdate(m.id, '미복귀')}
-            >미복귀</button>
-            <button 
-              style={styles.statusBtn(m.status === '잔류', '#3498db')} 
-              onClick={() => handleStatusUpdate(m.id, '잔류')}
-            >잔류</button>
+          <div style={{ width: '100%', height: '6px', background: '#eee', borderRadius: '3px', marginBottom: '18px', overflow: 'hidden' }}>
+            <div style={{ width: `${calculatePercent(m.joinDate)}%`, height: '100%', background: '#73c088', transition: 'width 0.5s ease-in-out' }} />
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button style={styles.statusBtn(m.status === '복귀', '#2ecc71')} onClick={() => handleStatusUpdate(m.id, '복귀')}>복귀</button>
+            <button style={styles.statusBtn(m.status === '미복귀' || !m.status, '#e74c3c')} onClick={() => handleStatusUpdate(m.id, '미복귀')}>미복귀</button>
+            <button style={styles.statusBtn(m.status === '잔류', '#3498db')} onClick={() => handleStatusUpdate(m.id, '잔류')}>잔류</button>
           </div>
         </div>
       ))}
