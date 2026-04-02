@@ -14,23 +14,19 @@ export default function App() {
   const [newName, setNewName] = useState('');
   const [newUnit, setNewUnit] = useState('HHC');
   const [newJoinDate, setNewJoinDate] = useState(new Date().toISOString().split('T')[0]);
-  
-  // 시작일과 종료일을 포함한 상태 관리
-  const [vacationInput, setVacationInput] = useState({ 
-    name: '', 
-    type: '연가', 
-    start: '', 
-    end: '' 
-  });
+  const [vacationInput, setVacationInput] = useState({ name: '', type: '연가', start: '', end: '' });
 
   useEffect(() => {
     localStorage.setItem('katusa-members', JSON.stringify(members));
     localStorage.setItem('katusa-vacations', JSON.stringify(vacations));
   }, [members, vacations]);
 
+  const updateStatus = (id, targetStatus) => {
+    setMembers(members.map(m => m.id === id ? { ...m, status: targetStatus } : m));
+  };
+
   const handleDateClick = (date) => setSelectedDate(date);
 
-  // [+] 버튼 클릭 시 팝업 열기 및 날짜 초기화
   const handleAddBtnClick = () => {
     const formatted = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
     setVacationInput({ ...vacationInput, start: formatted, end: formatted });
@@ -44,16 +40,28 @@ export default function App() {
     setVacationInput({ name: '', type: '연가', start: '', end: '' });
   };
 
+  const getStats = (unit) => {
+    const list = members.filter(m => m.unit === unit);
+    return {
+      total: list.length,
+      returned: list.filter(m => m.status === '복귀').length,
+      notReturned: list.filter(m => !m.status || m.status === '미복귀').length,
+      stay: list.filter(m => m.status === '잔류').length
+    };
+  };
+
+  const stats = getStats(activeTab);
+
   const styles = {
     container: { maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', fontFamily: '"Pretendard", sans-serif' },
     header: { background: 'linear-gradient(to bottom, #2d391e, #1a230e)', padding: '20px 20px 40px 20px', borderRadius: '0 0 40px 40px', textAlign: 'center' },
-    nav: { display: 'flex', justifyContent: 'space-around', marginBottom: '20px' },
+    nav: { display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '20px' },
     navBtn: (active) => ({ background: 'none', border: 'none', padding: '10px', color: active ? '#e9ce63' : '#7d8a6b', fontWeight: 'bold', fontSize: '18px', borderBottom: active ? '3px solid #e9ce63' : 'none' }),
-    card: { background: 'white', padding: '25px 20px', borderRadius: '30px', margin: '0 20px 15px', boxShadow: '0 8px 20px rgba(0,0,0,0.03)', textAlign: 'center', position: 'relative' },
-    modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(5px)' },
-    modalContent: { background: 'white', padding: '30px', borderRadius: '35px', width: '85%', maxWidth: '380px' },
-    modalInput: { width: '100%', padding: '15px', borderRadius: '15px', border: 'none', background: '#f1f3f5', marginBottom: '12px', fontSize: '16px', boxSizing: 'border-box' },
-    dateLabel: { fontSize: '12px', color: '#888', marginBottom: '5px', display: 'block', marginLeft: '5px' }
+    inputCard: { background: 'rgba(255,255,255,0.1)', padding: '20px', borderRadius: '25px' },
+    statsBar: { display: 'flex', justifyContent: 'space-around', background: 'white', margin: '-20px 20px 20px', padding: '20px', borderRadius: '25px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' },
+    card: { background: 'white', padding: '25px 20px', borderRadius: '30px', margin: '0 20px 15px', boxShadow: '0 8px 20px rgba(0,0,0,0.03)', textAlign: 'center' },
+    statusBtn: (active, color) => ({ flex: 1, padding: '12px 0', borderRadius: '12px', border: 'none', background: active ? color : '#f1f3f5', color: active ? 'white' : '#888', fontWeight: 'bold' }),
+    modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(5px)' }
   };
 
   return (
@@ -64,15 +72,15 @@ export default function App() {
           <button style={styles.navBtn(view === 'calendar')} onClick={() => setView('calendar')}>휴가 일정</button>
         </div>
         {view === 'main' && (
-          <div style={{ background: 'rgba(255,255,255,0.1)', padding: '20px', borderRadius: '25px' }}>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <select style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', marginBottom: '10px' }} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
+          <div style={styles.inputCard}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+              <select style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none' }} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
                 <option>HHC</option><option>Alpha</option><option>Bravo</option><option>Charlie</option>
               </select>
-              <input type="date" style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', marginBottom: '10px' }} value={newJoinDate} onChange={e => setNewJoinDate(e.target.value)} />
+              <input type="date" style={{ flex: 1.5, padding: '12px', borderRadius: '12px', border: 'none' }} value={newJoinDate} onChange={e => setNewJoinDate(e.target.value)} />
             </div>
-            <input style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', marginBottom: '10px', boxSizing: 'border-box' }} placeholder="대원 성함" value={newName} onChange={e => setNewName(e.target.value)} />
-            <button style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', background:'#e9ce63', fontWeight:'bold' }} onClick={() => { if(newName){ setMembers([...members, { id: Date.now(), name: newName, unit: newUnit, joinDate: newJoinDate, status: '미복귀' }]); setNewName(''); } }}>대원 추가</button>
+            <input style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', marginBottom: '10px', boxSizing: 'border-box' }} placeholder="대원 성함 입력" value={newName} onChange={e => setNewName(e.target.value)} />
+            <button style={{ width: '100%', padding: '12px', borderRadius: '12px', border: 'none', background:'#e9ce63', color: '#2d391e', fontWeight:'bold' }} onClick={() => { if(newName){ setMembers([...members, { id: Date.now(), name: newName, unit: newUnit, joinDate: newJoinDate, status: '미복귀' }]); setNewName(''); } }}>대원 추가</button>
           </div>
         )}
       </div>
@@ -84,9 +92,22 @@ export default function App() {
               <button key={u} style={{ padding: '10px 20px', borderRadius: '15px', border: 'none', background: activeTab === u ? '#25311b' : 'white', color: activeTab === u ? '#e9ce63' : '#555', fontWeight: 'bold' }} onClick={() => setActiveTab(u)}>{u}</button>
             ))}
           </div>
+
+          <div style={styles.statsBar}>
+            <div style={{textAlign:'center'}}><span style={{fontSize:'12px', color:'#aaa'}}>총원</span><br/><b>{stats.total}</b></div>
+            <div style={{textAlign:'center'}}><span style={{fontSize:'12px', color:'#aaa'}}>복귀</span><br/><b style={{color:'#2ecc71'}}>{stats.returned}</b></div>
+            <div style={{textAlign:'center'}}><span style={{fontSize:'12px', color:'#aaa'}}>미복귀</span><br/><b style={{color:'#e74c3c'}}>{stats.notReturned}</b></div>
+            <div style={{textAlign:'center'}}><span style={{fontSize:'12px', color:'#aaa'}}>잔류</span><br/><b style={{color:'#3498db'}}>{stats.stay}</b></div>
+          </div>
+
           {members.filter(m => m.unit === activeTab).map(m => (
             <div key={m.id} style={styles.card}>
-              <div style={{fontSize: '21px', fontWeight: '800'}}>{m.name}</div>
+              <div style={{fontSize: '22px', fontWeight: '800', marginBottom: '15px'}}>{m.name} <span style={{fontSize:'12px', color:'#ccc', fontWeight:'normal'}}>{m.unit}</span></div>
+              <div style={{display: 'flex', gap: '8px'}}>
+                <button style={styles.statusBtn(m.status === '복귀', '#2ecc71')} onClick={() => updateStatus(m.id, '복귀')}>복귀</button>
+                <button style={styles.statusBtn(m.status === '미복귀', '#e74c3c')} onClick={() => updateStatus(m.id, '미복귀')}>미복귀</button>
+                <button style={styles.statusBtn(m.status === '잔류', '#3498db')} onClick={() => updateStatus(m.id, '잔류')}>잔류</button>
+              </div>
             </div>
           ))}
         </div>
@@ -102,7 +123,7 @@ export default function App() {
             />
           </div>
           <div style={{ background: 'white', padding: '25px', borderRadius: '30px', marginTop: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight:'800' }}>🚩 {selectedDate.toLocaleDateString()} 명단</h3>
                 <button style={{ background: '#25311b', color: '#e9ce63', border: 'none', width: '35px', height: '35px', borderRadius: '50%', fontSize: '24px' }} onClick={handleAddBtnClick}>+</button>
             </div>
@@ -121,30 +142,32 @@ export default function App() {
 
       {showModal && (
         <div style={styles.modalOverlay} onClick={() => setShowModal(false)}>
-          <div style={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <h3 style={{ textAlign: 'center', marginBottom: '25px', fontWeight:'800' }}>{selectedDate.toLocaleDateString()} 휴가 등록</h3>
-            
-            <input style={styles.modalInput} placeholder="이름" value={vacationInput.name} onChange={e => setVacationInput({...vacationInput, name: e.target.value})} />
-            <input style={styles.modalInput} placeholder="휴가 종류 (연가, 외출 등)" value={vacationInput.type} onChange={e => setVacationInput({...vacationInput, type: e.target.value})} />
-            
-            <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ background: 'white', padding: '30px', borderRadius: '35px', width: '85%', maxWidth: '380px' }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ textAlign: 'center', marginBottom: '20px', fontWeight:'800' }}>휴가 등록</h3>
+            <input style={{ width: '100%', padding: '15px', borderRadius: '15px', border: 'none', background: '#f1f3f5', marginBottom: '10px' }} placeholder="이름" value={vacationInput.name} onChange={e => setVacationInput({...vacationInput, name: e.target.value})} />
+            <input style={{ width: '100%', padding: '15px', borderRadius: '15px', border: 'none', background: '#f1f3f5', marginBottom: '10px' }} placeholder="휴가 종류" value={vacationInput.type} onChange={e => setVacationInput({...vacationInput, type: e.target.value})} />
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
               <div style={{ flex: 1 }}>
-                <span style={styles.dateLabel}>시작일</span>
-                <input type="date" style={styles.modalInput} value={vacationInput.start} onChange={e => setVacationInput({...vacationInput, start: e.target.value})} />
+                <span style={{ fontSize: '12px', color: '#888' }}>시작일</span>
+                <input type="date" style={{ width: '100%', padding: '10px', borderRadius: '10px', border: 'none', background: '#f1f3f5' }} value={vacationInput.start} onChange={e => setVacationInput({...vacationInput, start: e.target.value})} />
               </div>
               <div style={{ flex: 1 }}>
-                <span style={styles.dateLabel}>종료일</span>
-                <input type="date" style={styles.modalInput} value={vacationInput.end} onChange={e => setVacationInput({...vacationInput, end: e.target.value})} />
+                <span style={{ fontSize: '12px', color: '#888' }}>종료일</span>
+                <input type="date" style={{ width: '100%', padding: '10px', borderRadius: '10px', border: 'none', background: '#f1f3f5' }} value={vacationInput.end} onChange={e => setVacationInput({...vacationInput, end: e.target.value})} />
               </div>
             </div>
-
-            <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px' }}>
               <button style={{ flex: 1, padding: '15px', borderRadius: '15px', border: 'none', background: '#eee' }} onClick={() => setShowModal(false)}>취소</button>
               <button style={{ flex: 1, padding: '15px', borderRadius: '15px', border: 'none', background: '#25311b', color: 'white', fontWeight: 'bold' }} onClick={addVacation}>등록</button>
             </div>
           </div>
         </div>
       )}
+
+      <style>{`
+        .react-calendar { width: 100% !important; border: none !important; }
+        .react-calendar__tile--active { background: #25311b !important; border-radius: 12px !important; color: #e9ce63 !important; }
+      `}</style>
     </div>
   );
 }
