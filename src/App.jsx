@@ -2,9 +2,19 @@ import { useState, useEffect } from 'react'
 import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css'
 
+// 1. 에러 방지용 로컬 스토리지 데이터 불러오기 함수
+const getSafeData = (key) => {
+  try {
+    const data = JSON.parse(localStorage.getItem(key));
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    return [];
+  }
+};
+
 export default function App() {
-  const [members, setMembers] = useState(() => JSON.parse(localStorage.getItem('katusa-members') || '[]'));
-  const [vacations, setVacations] = useState(() => JSON.parse(localStorage.getItem('katusa-vacations') || '[]'));
+  const [members, setMembers] = useState(() => getSafeData('katusa-members'));
+  const [vacations, setVacations] = useState(() => getSafeData('katusa-vacations'));
   
   const [view, setView] = useState('calendar'); // 캘린더 뷰를 기본으로 설정
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -25,12 +35,15 @@ export default function App() {
     setMembers(members.map(m => m.id === id ? { ...m, status: targetStatus } : m));
   };
 
+  // 2. 퍼센트 계산 에러 방지
   const calculatePercent = (joinDate) => {
+    if (!joinDate) return "0.0";
     const start = new Date(joinDate);
     const today = new Date();
     const end = new Date(start);
     end.setMonth(start.getMonth() + 18);
-    return Math.min(100, Math.max(0, ((today - start) / (end - start)) * 100)).toFixed(1);
+    const percent = ((today - start) / (end - start)) * 100;
+    return isNaN(percent) ? "0.0" : Math.min(100, Math.max(0, percent)).toFixed(1);
   };
 
   const addVacation = () => {
@@ -40,8 +53,9 @@ export default function App() {
     setVacationInput({ name: '', type: '연가', start: '', end: '' });
   };
 
-  // 타임트리처럼 이름에 따라 막대 색상을 다르게 지정하는 함수
+  // 3. 이름이 없어도 에러가 나지 않도록 방어 코드 추가
   const getColor = (name) => {
+    if (!name) return '#5fb2b2'; // 이름이 없으면 기본 색상 반환
     const colors = ['#5fb2b2', '#73c088', '#f2bc57', '#e74c3c', '#3498db', '#9b59b6'];
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
@@ -60,6 +74,8 @@ export default function App() {
     };
   })();
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 480;
+
   const styles = {
     container: { maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#ffffff', fontFamily: '"Pretendard", sans-serif', position: 'relative', paddingBottom: '80px' },
     header: { background: 'linear-gradient(to bottom, #2d391e, #1a230e)', padding: '20px 20px 40px 20px', borderRadius: '0 0 40px 40px', position: 'relative', zIndex: 10 },
@@ -70,15 +86,9 @@ export default function App() {
     card: { background: 'white', padding: '25px 20px', borderRadius: '30px', margin: '0 20px 15px', boxShadow: '0 8px 20px rgba(0,0,0,0.03)', textAlign: 'center', position: 'relative', border: '1px solid #eee' },
     statusBtn: (active, color) => ({ flex: 1, padding: '12px 0', borderRadius: '12px', border: 'none', background: active ? color : '#f1f3f5', color: active ? 'white' : '#888', fontWeight: 'bold' }),
     modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(5px)' },
-    // 우측 하단 플로팅 + 버튼 디자인
-    fabBtn: { position: 'fixed', bottom: '30px', right: '50%', transform: 'translateX(210px)', width: '60px', height: '60px', borderRadius: '50%', background: '#2d391e', color: 'white', fontSize: '32px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', cursor: 'pointer', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }
+    // 플로팅 버튼을 좀 더 안전하게 계산
+    fabBtn: { position: 'fixed', bottom: '30px', right: isMobile ? '20px' : '50%', transform: isMobile ? 'none' : 'translateX(210px)', width: '60px', height: '60px', borderRadius: '50%', background: '#2d391e', color: 'white', fontSize: '32px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', cursor: 'pointer', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }
   };
-
-  // 모바일 화면 비율 맞추기 위한 트랜스폼 계산
-  if (typeof window !== 'undefined' && window.innerWidth < 480) {
-     styles.fabBtn.right = '20px';
-     styles.fabBtn.transform = 'none';
-  }
 
   return (
     <div style={styles.container}>
@@ -119,7 +129,7 @@ export default function App() {
           {members.filter(m => m.unit === activeTab).map(m => (
             <div key={m.id} style={styles.card}>
               <button style={{position:'absolute', top:'15px', right:'15px', border:'none', background:'none', color:'#ddd', fontSize:'18px'}} onClick={() => setMembers(members.filter(x => x.id !== m.id))}>✕</button>
-              <div style={{fontSize: '22px', fontWeight: '800', marginBottom: '15px'}}>{m.name} <span style={{fontSize: '13px', color: '#bbb', fontWeight: '400'}}>{calculatePercent(m.joinDate)}%</span></div>
+              <div style={{fontSize: '22px', fontWeight: '800', marginBottom: '15px'}}>{m.name || '이름없음'} <span style={{fontSize: '13px', color: '#bbb', fontWeight: '400'}}>{calculatePercent(m.joinDate)}%</span></div>
               <div style={{display: 'flex', gap: '8px'}}>
                 <button style={styles.statusBtn(m.status === '복귀', '#2ecc71')} onClick={() => updateStatus(m.id, '복귀')}>복귀</button>
                 <button style={styles.statusBtn(m.status === '미복귀', '#e74c3c')} onClick={() => updateStatus(m.id, '미복귀')}>미복귀</button>
@@ -130,7 +140,6 @@ export default function App() {
         </div>
       ) : (
         <div style={{ padding: '0px' }}>
-          {/* 타임트리 스타일 달력 영역 */}
           <div style={{ background: 'white', padding: '10px 0' }}>
             <Calendar 
               onClickDay={setSelectedDate} 
@@ -139,11 +148,11 @@ export default function App() {
               calendarType="US"
               tileContent={({date}) => {
                 const d = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-                const dayVacations = vacations.filter(v => d >= v.start && d <= v.end);
+                // 유효한 휴가 데이터만 필터링
+                const dayVacations = vacations.filter(v => v && v.start && v.end && d >= v.start && d <= v.end);
                 return (
                   <div className="vacation-bar-container">
                     {dayVacations.map((v, i) => {
-                      // 이름으로 랜덤 색상 지정하여 타임트리 느낌 살리기
                       const barColor = getColor(v.name);
                       return (
                         <div key={i} className="vacation-bar" style={{ backgroundColor: barColor }}>
@@ -157,20 +166,19 @@ export default function App() {
             />
           </div>
           
-          {/* 하단 상세 명단 리스트 */}
           <div style={{ background: '#f8f9fa', padding: '25px 20px', minHeight: '300px' }}>
             <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', fontWeight:'800', color:'#333' }}>
               🚩 {selectedDate.toLocaleDateString()} 명단
             </h3>
             {vacations.filter(v => {
               const d = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-              return d >= v.start && d <= v.end;
+              return v && v.start && v.end && d >= v.start && d <= v.end;
             }).length === 0 ? (
                 <p style={{textAlign:'center', color:'#aaa', marginTop:'40px'}}>등록된 휴가자가 없습니다.</p>
             ) : (
               vacations.filter(v => {
                 const d = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-                return d >= v.start && d <= v.end;
+                return v && v.start && v.end && d >= v.start && d <= v.end;
               }).map(v => (
                 <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', background: 'white', padding: '15px', borderRadius: '15px', marginBottom: '10px', border: '1px solid #eee' }}>
                   <span>
@@ -183,7 +191,6 @@ export default function App() {
             )}
           </div>
 
-          {/* 타임트리 스타일 플로팅 + 버튼 */}
           <button style={styles.fabBtn} onClick={() => {
             const formatted = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
             setVacationInput({ ...vacationInput, start: formatted, end: formatted });
@@ -216,17 +223,16 @@ export default function App() {
         </div>
       )}
 
-      {/* 캘린더 그리드 및 막대 디자인 CSS (타임트리 스타일 핵심) */}
       <style>{`
         .react-calendar { width: 100% !important; border: none !important; font-family: inherit !important; background: white; }
         
-        /* 요일 헤더 (일, 월, 화...) 선긋기 */
+        /* 요일 헤더 */
         .react-calendar__month-view__weekdays { border-bottom: 1px solid #eee; padding-bottom: 5px; font-size: 13px; color: #888; }
         .react-calendar__month-view__weekdays__weekday abbr { text-decoration: none; }
-        .react-calendar__month-view__weekdays__weekday--weekend:nth-child(1) { color: #e74c3c; } /* 일요일 빨간색 */
-        .react-calendar__month-view__weekdays__weekday--weekend:nth-child(7) { color: #3498db; } /* 토요일 파란색 */
+        .react-calendar__month-view__weekdays__weekday--weekend:nth-child(1) { color: #e74c3c; } 
+        .react-calendar__month-view__weekdays__weekday--weekend:nth-child(7) { color: #3498db; } 
 
-        /* 달력 칸(그리드) 설정 */
+        /* 달력 칸(그리드) */
         .react-calendar__month-view__days { border-left: 1px solid #f5f5f5; border-top: 1px solid #f5f5f5; }
         .react-calendar__tile { 
             height: 90px !important; 
@@ -237,18 +243,14 @@ export default function App() {
             background: white !important;
         }
         
-        /* 날짜 숫자 위치 */
         .react-calendar__tile > abbr { margin-left: 5px; font-size: 13px; margin-bottom: 4px; font-weight: 500; }
-        
-        /* 오늘, 선택된 날짜 하이라이트 */
         .react-calendar__tile--now > abbr { background: #2d391e; color: white; border-radius: 50%; padding: 2px 6px; }
         .react-calendar__tile--active { background: #fdfdfd !important; box-shadow: inset 0 0 0 2px #2d391e; }
         
-        /* 주말 날짜 색상 */
         .react-calendar__month-view__days__day--weekend:nth-child(7n+1) > abbr { color: #e74c3c; }
         .react-calendar__month-view__days__day--weekend:nth-child(7n) > abbr { color: #3498db; }
 
-        /* 타임트리 스타일 컬러풀 막대 */
+        /* 막대 디자인 */
         .vacation-bar-container { width: 100%; display: flex; flex-direction: column; gap: 1px; }
         .vacation-bar { 
             width: 100%; 
