@@ -113,8 +113,8 @@ export default function App() {
             <input type="date" style={{ flex: 1.5, padding: '10px', borderRadius: '10px', border: 'none' }} value={newJoinDate} onChange={e => setNewJoinDate(e.target.value)} />
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <input style={{ flex: 3, padding: '10px', borderRadius: '10px', border: 'none' }} placeholder="성명 입력" value={newName} onChange={e => setNewName(e.target.value)} />
-            <button style={{ flex: 1, background: '#e9ce63', border: 'none', borderRadius: '10px', fontWeight: 'bold', color: '#2d391e' }} onClick={addMember}>대원 추가</button>
+            <input style={{ flex: 3, padding: '10px', borderRadius: '10px', border: 'none' }} placeholder="이름 입력" value={newName} onChange={e => setNewName(e.target.value)} />
+            <button style={{ flex: 1, background: '#e9ce63', border: 'none', borderRadius: '10px', fontWeight: 'bold', color: '#2d391e' }} onClick={addMember}>인원 추가</button>
           </div>
         </div>
       </div>
