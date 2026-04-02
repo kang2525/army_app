@@ -4,6 +4,7 @@ import 'react-calendar/dist/Calendar.css'
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, update, remove } from 'firebase/database';
 
+// ⚠️ 본인의 실제 Firebase Config를 사용하세요!
 const firebaseConfig = {
   apiKey: "AIzaSyBbqaA06Uq05IFDbWDOMeBOlRy2eqF0OR0E",
   authDomain: "armyapp-f95eb.firebaseapp.com",
@@ -26,6 +27,7 @@ export default function App() {
   const [newUnit, setNewUnit] = useState('HHC');
   const [newJoinDate, setNewJoinDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // 실시간 데이터 동기화
   useEffect(() => {
     const membersRef = ref(db, 'members');
     return onValue(membersRef, (snapshot) => {
@@ -62,14 +64,12 @@ export default function App() {
 
   const styles = {
     container: { maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '60px', fontFamily: 'sans-serif' },
-    // 1. 헤더: 탭을 안으로 포함하기 위해 패딩 조정
     header: { background: '#2d391e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' },
-    // 2. 타이틀: 더 두껍게 (FontWeight 900)
+    // 타이틀 두께 최대로 (900)
     title: { margin: '0 0 25px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900', letterSpacing: '-0.5px' },
-    // 3. 탭 메뉴: 헤더 안으로 완전히 이동
     navTabContainer: { 
       display: 'flex', 
-      background: 'rgba(255,255,255,0.1)', // 헤더 안에서 살짝 투명하게
+      background: 'rgba(255,255,255,0.1)', 
       margin: '20px 0 10px 0', 
       borderRadius: '12px', 
       overflow: 'hidden',
@@ -79,7 +79,7 @@ export default function App() {
       flex: 1, padding: '14px', border: 'none', 
       background: active ? '#e9ce63' : 'transparent', 
       color: active ? '#2d391e' : 'rgba(255,255,255,0.6)', 
-      fontWeight: 'bold', fontSize: '15px', cursor: 'pointer', transition: '0.3s'
+      fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' 
     }),
     statsBar: { display: 'flex', justifyContent: 'space-around', background: 'white', margin: '15px', padding: '15px', borderRadius: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' },
     card: { background: 'white', padding: '18px', borderRadius: '20px', margin: '12px 15px', boxShadow: '0 2px 5px rgba(0,0,0,0.02)', position: 'relative' },
@@ -95,7 +95,6 @@ export default function App() {
       <div style={styles.header}>
         <h2 style={styles.title}>Katusa Tracker</h2>
         
-        {/* 입력 영역 */}
         {view === 'main' && (
           <div style={{ display: 'grid', gap: '10px' }}>
              <div style={{ display: 'flex', gap: '8px' }}>
@@ -111,7 +110,6 @@ export default function App() {
           </div>
         )}
 
-        {/* 탭 메뉴 (헤더 안으로 깔끔하게 이동) */}
         <div style={styles.navTabContainer}>
           <button style={styles.navTab(view === 'main')} onClick={() => setView('main')}>부대 관리</button>
           <button style={styles.navTab(view === 'calendar')} onClick={() => setView('calendar')}>휴가 일정</button>
@@ -133,21 +131,29 @@ export default function App() {
             <div style={{textAlign:'center'}}><small style={{color:'#999'}}>잔류</small><br/><b style={{color:'#3498db'}}>{stats.stay}</b></div>
           </div>
 
-          {currentMembers.sort((a,b) => new Date(a.joinDate) - new Date(b.joinDate)).map(m => (
-            <div key={m.id} style={styles.card}>
-              <button style={{ position:'absolute', top:'18px', right:'18px', border:'none', background:'none', color:'#ddd', fontSize: '18px' }} onClick={() => remove(ref(db, `members/${m.id}`))}>✕</button>
-              <div style={{ marginBottom: '12px', fontWeight: 'bold', fontSize: '18px' }}>
-                {m.name} <span style={{ fontSize: '12px', color: '#bbb', fontWeight: 'normal' }}>{calculatePercent(m.joinDate)}%</span>
+          {/* 대원 리스트 정렬: 1순위 입대일, 2순위 이름(가나다) */}
+          {currentMembers
+            .sort((a, b) => {
+              const dateA = new Date(a.joinDate);
+              const dateB = new Date(b.joinDate);
+              if (dateA - dateB !== 0) return dateA - dateB;
+              return a.name.localeCompare(b.name, 'ko');
+            })
+            .map(m => (
+              <div key={m.id} style={styles.card}>
+                <button style={{ position:'absolute', top:'18px', right:'18px', border:'none', background:'none', color:'#ddd', fontSize: '18px' }} onClick={() => remove(ref(db, `members/${m.id}`))}>✕</button>
+                <div style={{ marginBottom: '12px', fontWeight: 'bold', fontSize: '18px' }}>
+                  {m.name} <span style={{ fontSize: '12px', color: '#bbb', fontWeight: 'normal' }}>{calculatePercent(m.joinDate)}%</span>
+                </div>
+                <div style={{ width: '100%', height: '6px', background: '#eee', borderRadius: '3px', marginBottom: '20px', overflow: 'hidden' }}>
+                  <div style={{ width: `${calculatePercent(m.joinDate)}%`, height: '100%', background: '#73c088' }} />
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button style={styles.statusBtn(m.status === '복귀', '#2ecc71')} onClick={() => handleStatusUpdate(m.id, '복귀')}>복귀</button>
+                  <button style={styles.statusBtn(m.status === '미복귀' || !m.status, '#e74c3c')} onClick={() => handleStatusUpdate(m.id, '미복귀')}>미복귀</button>
+                  <button style={styles.statusBtn(m.status === '잔류', '#3498db')} onClick={() => handleStatusUpdate(m.id, '잔류')}>잔류</button>
+                </div>
               </div>
-              <div style={{ width: '100%', height: '6px', background: '#eee', borderRadius: '3px', marginBottom: '20px', overflow: 'hidden' }}>
-                <div style={{ width: `${calculatePercent(m.joinDate)}%`, height: '100%', background: '#73c088' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button style={styles.statusBtn(m.status === '복귀', '#2ecc71')} onClick={() => handleStatusUpdate(m.id, '복귀')}>복귀</button>
-                <button style={styles.statusBtn(m.status === '미복귀' || !m.status, '#e74c3c')} onClick={() => handleStatusUpdate(m.id, '미복귀')}>미복귀</button>
-                <button style={styles.statusBtn(m.status === '잔류', '#3498db')} onClick={() => handleStatusUpdate(m.id, '잔류')}>잔류</button>
-              </div>
-            </div>
           ))}
         </>
       ) : (
@@ -156,7 +162,7 @@ export default function App() {
             <Calendar onClickDay={setSelectedDate} value={selectedDate} formatDay={(l, d) => d.getDate()} />
           </div>
           <div style={{ marginTop: '20px', padding: '20px', textAlign: 'center', background: 'white', borderRadius: '15px', color: '#888' }}>
-            📅 {selectedDate.toLocaleDateString()} 상세 기능 준비 중
+            📅 {selectedDate.toLocaleDateString()} 상세 기능 준비중. 많은 피드백 환영.
           </div>
         </div>
       )}
