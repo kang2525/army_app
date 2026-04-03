@@ -69,7 +69,7 @@ export default function App() {
   const registerMyDevice = (member) => {
     if (myId) { 
       const currentMe = members.find(m => m.id === myId);
-      alert(`이미 [${currentMe?.name || '다른 사람'}]으로 등록된 기기입니다. 상단의 초기화 버튼을 누르거나 '해제'를 먼저 해주세요.`);
+      alert(`이미 [${currentMe?.name || '다른 사람'}]으로 등록된 기기입니다. '해제'를 먼저 해주세요.`);
       return; 
     }
     if (member.isRegistered) { alert("이미 다른 기기에서 등록된 사람입니다."); return; }
@@ -137,22 +137,9 @@ export default function App() {
     setNewName('');
   };
 
-  const forceResetStorage = () => {
-    localStorage.removeItem('katusa_my_id');
-    setMyId(null);
-    alert("기기 정보가 초기화되었습니다. 이제 본인 이름을 눌러 등록하세요!");
-    window.location.reload();
-  };
-
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '80px', fontFamily: 'sans-serif' }}>
       
-      <div style={{ padding: '10px', background: '#eee', textAlign: 'center' }}>
-        <button onClick={forceResetStorage} style={{ background: '#ff4d4f', color: 'white', border: 'none', padding: '5px 15px', borderRadius: '5px', fontSize: '12px', fontWeight: 'bold' }}>
-          ⚠️ 등록 오류 시 클릭 (초기화)
-        </button>
-      </div>
-
       <style>{`
         @keyframes shine {
           0% { left: -100%; }
