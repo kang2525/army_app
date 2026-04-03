@@ -24,7 +24,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('HHC');
   const [selectedDate, setSelectedDate] = useState(new Date());
   
-  // 로컬 스토리지 기기 등록 정보
   const [myId, setMyId] = useState(localStorage.getItem('katusa_my_id'));
 
   const [newName, setNewName] = useState('');
@@ -45,7 +44,6 @@ export default function App() {
     });
   }, []);
 
-  // 기기 등록 함수
   const registerMyDevice = (member) => {
     if (myId) return; 
     if (window.confirm(`이 기기를 [${member.name}] 대원의 기기로 등록하시겠습니까?`)) {
@@ -55,8 +53,6 @@ export default function App() {
   };
 
   const me = members.find(m => m.id === myId);
-  
-  // ⭐ 핵심 수정: 기기 등록 여부와 상관없이 '신준섭' ID이거나, 등록된 계정이 시니어면 추가창 노출
   const isIAmSenior = (myId === "1775170739870") || (me?.isSenior === true);
 
   const calculatePercent = (joinDate) => {
@@ -113,28 +109,25 @@ export default function App() {
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '80px', fontFamily: 'sans-serif' }}>
       
-      {/* 상단 디자인 */}
+      {/* 상단 헤더 섹션 */}
       <div style={{ background: '#3b472e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
         <h2 style={{ margin: '0 0 10px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>Katusa Tracker</h2>
         
-        {/* 기기 등록 안내 (등록 안 된 경우에만) */}
         {!myId && <p style={{ fontSize: '13px', color: '#e9ce63', marginBottom: '20px', fontWeight: 'bold' }}>⚠️ 목록에서 본인의 이름을 눌러 기기를 등록하세요</p>}
         
-        {/* ⭐ 복구된 추가 기능 섹션 */}
-        {isIAmSenior && (
-          <div style={{ display: 'grid', gap: '10px', marginBottom: '20px', background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '15px' }}>
-             <div style={{ display: 'flex', gap: '8px' }}>
-                <select style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none' }} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
-                  {['HHC', 'Alpha', 'Bravo', 'Charlie'].map(u => <option key={u}>{u}</option>)}
-                </select>
-                <input type="date" style={{ flex: 1.5, padding: '12px', borderRadius: '10px', border: 'none' }} value={newJoinDate} onChange={e => setNewJoinDate(e.target.value)} />
-             </div>
-             <div style={{ display: 'flex', gap: '8px' }}>
-                <input style={{ flex: 3, padding: '12px', borderRadius: '10px', border: 'none' }} placeholder="대원 성명 입력" value={newName} onChange={e => setNewName(e.target.value)} />
-                <button style={{ flex: 1, background: '#e9ce63', border: 'none', borderRadius: '10px', fontWeight: 'bold', color: '#3b472e' }} onClick={addMember}>추가</button>
-             </div>
-          </div>
-        )}
+        {/* ⭐ 인원 추가창: 이제 누구나 볼 수 있습니다 (isIAmSenior 조건 제거) */}
+        <div style={{ display: 'grid', gap: '10px', marginBottom: '20px', background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '15px' }}>
+           <div style={{ display: 'flex', gap: '8px' }}>
+              <select style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none' }} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
+                {['HHC', 'Alpha', 'Bravo', 'Charlie'].map(u => <option key={u}>{u}</option>)}
+              </select>
+              <input type="date" style={{ flex: 1.5, padding: '12px', borderRadius: '10px', border: 'none' }} value={newJoinDate} onChange={e => setNewJoinDate(e.target.value)} />
+           </div>
+           <div style={{ display: 'flex', gap: '8px' }}>
+              <input style={{ flex: 3, padding: '12px', borderRadius: '10px', border: 'none' }} placeholder="대원 성명 입력" value={newName} onChange={e => setNewName(e.target.value)} />
+              <button style={{ flex: 1, background: '#e9ce63', border: 'none', borderRadius: '10px', fontWeight: 'bold', color: '#3b472e' }} onClick={addMember}>추가</button>
+           </div>
+        </div>
 
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.15)', borderRadius: '12px', overflow: 'hidden' }}>
           <button style={{ flex: 1, padding: '14px 0', border: 'none', background: view === 'main' ? '#e9ce63' : 'transparent', color: view === 'main' ? '#3b472e' : 'white', fontWeight: 'bold' }} onClick={() => setView('main')}>부대 관리</button>
@@ -151,7 +144,6 @@ export default function App() {
             ))}
           </div>
 
-          {/* 통계 바 */}
           <div style={{ display: 'flex', justifyContent: 'space-around', background: 'white', margin: '0 15px 15px', padding: '15px', borderRadius: '15px' }}>
             <div style={{textAlign:'center'}}><small style={{color:'#999'}}>총원</small><br/><b>{stats.total}</b></div>
             <div style={{textAlign:'center'}}><small style={{color:'#999'}}>복귀</small><br/><b style={{color:'#2ecc71'}}>{stats.returned}</b></div>
@@ -166,6 +158,7 @@ export default function App() {
               return (
                 <div key={m.id} style={{ background: 'white', padding: '20px', borderRadius: '25px', margin: '0 15px 15px', position: 'relative', border: isMe ? '2px solid #e9ce63' : 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
                   
+                  {/* 시니어 전용: 인원 삭제 버튼 */}
                   {isIAmSenior && (
                     <button style={{ position:'absolute', top:'20px', right:'20px', border:'none', background:'none', color:'#eee', cursor:'pointer' }} onClick={() => { if(window.confirm(`${m.name} 대원을 삭제하시겠습니까?`)) remove(ref(db, `members/${m.id}`)); }}>✕</button>
                   )}
@@ -179,6 +172,7 @@ export default function App() {
                       {!myId && <span style={{ fontSize: '11px', color: '#e9ce63', display: 'block', marginTop: '4px' }}>👆 클릭하여 내 기기로 등록</span>}
                     </div>
 
+                    {/* 시니어 전용: 권한 임명 버튼 */}
                     {isIAmSenior && (
                       <button onClick={() => toggleSenior(m)} style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', border: '1px solid #007bff', background: m.isSenior ? '#007bff' : 'white', color: m.isSenior ? 'white' : '#007bff' }}>
                         {m.isSenior ? '해제' : '임명'}
@@ -205,6 +199,7 @@ export default function App() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
                 <h4 style={{ margin: 0, color: '#555' }}>최근 활동</h4>
+                {/* 시니어 전용: 로그 초기화 버튼 */}
                 {isIAmSenior && <button onClick={() => remove(ref(db, 'logs'))} style={{ color: '#e74c3c', border: 'none', background: 'none', fontSize: '12px' }}>전체 삭제</button>}
               </div>
               {logs.map(log => (
