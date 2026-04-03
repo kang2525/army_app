@@ -24,7 +24,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('HHC');
   const [selectedDate, setSelectedDate] = useState(new Date());
   
-  // 1. 로컬 스토리지에서 등록된 ID 불러오기 (없으면 null)
+  // 로컬 스토리지 기기 등록 정보
   const [myId, setMyId] = useState(localStorage.getItem('katusa_my_id'));
 
   const [newName, setNewName] = useState('');
@@ -45,19 +45,19 @@ export default function App() {
     });
   }, []);
 
-  // 2. 기기 등록 함수: 이름을 클릭했을 때 실행
+  // 기기 등록 함수
   const registerMyDevice = (member) => {
-    if (myId) return; // 이미 등록된 경우 무시
-    
-    if (window.confirm(`이 기기를 [${member.name}] 대원의 기기로 등록하시겠습니까?\n한 번 등록하면 본인의 상태만 변경할 수 있습니다.`)) {
+    if (myId) return; 
+    if (window.confirm(`이 기기를 [${member.name}] 대원의 기기로 등록하시겠습니까?`)) {
       localStorage.setItem('katusa_my_id', member.id);
       setMyId(member.id);
-      alert(`${member.name} 대원으로 등록되었습니다.`);
     }
   };
 
   const me = members.find(m => m.id === myId);
-  const isIAmSenior = me?.isSenior || false;
+  
+  // ⭐ 핵심 수정: 기기 등록 여부와 상관없이 '신준섭' ID이거나, 등록된 계정이 시니어면 추가창 노출
+  const isIAmSenior = (myId === "1775170739870") || (me?.isSenior === true);
 
   const calculatePercent = (joinDate) => {
     if(!joinDate) return "0";
@@ -69,9 +69,8 @@ export default function App() {
   };
 
   const handleStatusUpdate = (member, newStatus) => {
-    // 내 기기로 등록된 사람만 버튼 클릭 가능
     if (member.id !== myId) {
-      alert("본인의 이름 카드를 먼저 클릭하여 기기를 등록해야 합니다.");
+      alert("본인의 이름 카드를 클릭하여 기기를 먼저 등록해 주세요.");
       return;
     }
     update(ref(db, `members/${member.id}`), { status: newStatus });
@@ -117,18 +116,21 @@ export default function App() {
       {/* 상단 디자인 */}
       <div style={{ background: '#3b472e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
         <h2 style={{ margin: '0 0 10px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>Katusa Tracker</h2>
-        {!myId && <p style={{ fontSize: '12px', color: '#e9ce63', marginBottom: '20px' }}>⚠️ 목록에서 본인의 이름을 눌러 기기를 등록하세요</p>}
         
+        {/* 기기 등록 안내 (등록 안 된 경우에만) */}
+        {!myId && <p style={{ fontSize: '13px', color: '#e9ce63', marginBottom: '20px', fontWeight: 'bold' }}>⚠️ 목록에서 본인의 이름을 눌러 기기를 등록하세요</p>}
+        
+        {/* ⭐ 복구된 추가 기능 섹션 */}
         {isIAmSenior && (
-          <div style={{ display: 'grid', gap: '10px', marginBottom: '20px' }}>
+          <div style={{ display: 'grid', gap: '10px', marginBottom: '20px', background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '15px' }}>
              <div style={{ display: 'flex', gap: '8px' }}>
-                <select style={{ flex: 1, padding: '10px', borderRadius: '10px', border: 'none' }} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
+                <select style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none' }} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
                   {['HHC', 'Alpha', 'Bravo', 'Charlie'].map(u => <option key={u}>{u}</option>)}
                 </select>
-                <input type="date" style={{ flex: 1.5, padding: '10px', borderRadius: '10px', border: 'none' }} value={newJoinDate} onChange={e => setNewJoinDate(e.target.value)} />
+                <input type="date" style={{ flex: 1.5, padding: '12px', borderRadius: '10px', border: 'none' }} value={newJoinDate} onChange={e => setNewJoinDate(e.target.value)} />
              </div>
              <div style={{ display: 'flex', gap: '8px' }}>
-                <input style={{ flex: 3, padding: '10px', borderRadius: '10px', border: 'none' }} placeholder="성명 입력" value={newName} onChange={e => setNewName(e.target.value)} />
+                <input style={{ flex: 3, padding: '12px', borderRadius: '10px', border: 'none' }} placeholder="대원 성명 입력" value={newName} onChange={e => setNewName(e.target.value)} />
                 <button style={{ flex: 1, background: '#e9ce63', border: 'none', borderRadius: '10px', fontWeight: 'bold', color: '#3b472e' }} onClick={addMember}>추가</button>
              </div>
           </div>
@@ -149,6 +151,7 @@ export default function App() {
             ))}
           </div>
 
+          {/* 통계 바 */}
           <div style={{ display: 'flex', justifyContent: 'space-around', background: 'white', margin: '0 15px 15px', padding: '15px', borderRadius: '15px' }}>
             <div style={{textAlign:'center'}}><small style={{color:'#999'}}>총원</small><br/><b>{stats.total}</b></div>
             <div style={{textAlign:'center'}}><small style={{color:'#999'}}>복귀</small><br/><b style={{color:'#2ecc71'}}>{stats.returned}</b></div>
@@ -168,18 +171,17 @@ export default function App() {
                   )}
                   
                   <div style={{ marginBottom: '15px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                    {/* 3. 이름 클릭 시 기기 등록 이벤트 연결 */}
                     <div onClick={() => registerMyDevice(m)} style={{ cursor: !myId ? 'pointer' : 'default' }}>
                       <span style={m.isSenior ? { color: '#007bff', fontWeight: '900', fontSize: '20px' } : { color: '#333', fontWeight: 'bold', fontSize: '19px' }}>
                         {m.isSenior && "👑 "}{m.name}{m.isSenior && " ✨"}
                       </span>
                       <span style={{ fontSize: '13px', color: '#ccc', marginLeft:'10px' }}>{pct}%</span>
-                      {!myId && <span style={{ fontSize: '10px', color: '#e9ce63', display: 'block' }}>클릭하여 등록</span>}
+                      {!myId && <span style={{ fontSize: '11px', color: '#e9ce63', display: 'block', marginTop: '4px' }}>👆 클릭하여 내 기기로 등록</span>}
                     </div>
 
                     {isIAmSenior && (
                       <button onClick={() => toggleSenior(m)} style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '6px', border: '1px solid #007bff', background: m.isSenior ? '#007bff' : 'white', color: m.isSenior ? 'white' : '#007bff' }}>
-                        {m.isSenior ? '해제' : '시니어 임명'}
+                        {m.isSenior ? '해제' : '임명'}
                       </button>
                     )}
                   </div>
