@@ -44,9 +44,23 @@ export default function App() {
     });
   }, []);
 
-  // ⭐ 시니어 카투사 판별 로직
   const me = members.find(m => m.id === myId);
   const isSeniorKatusa = me?.name === "신준섭";
+
+  // 현재 탭의 인원 정보 계산
+  const currentMembers = members
+    .filter(m => m.unit === activeTab)
+    .sort((a, b) => {
+      if (a.joinDate !== b.joinDate) return new Date(a.joinDate) - new Date(b.joinDate);
+      return a.name.localeCompare(b.name, 'ko');
+    });
+
+  const stats = {
+    total: currentMembers.length,
+    returned: currentMembers.filter(m => m.status === '복귀').length,
+    notReturned: currentMembers.filter(m => m.status === '미복귀').length,
+    stay: currentMembers.filter(m => m.status === '잔류').length
+  };
 
   const registerMyDevice = (member) => {
     if (myId) { alert("이미 등록된 기기입니다."); return; }
@@ -108,13 +122,6 @@ export default function App() {
     setNewName('');
   };
 
-  const currentMembers = members
-    .filter(m => m.unit === activeTab)
-    .sort((a, b) => {
-      if (a.joinDate !== b.joinDate) return new Date(a.joinDate) - new Date(b.joinDate);
-      return a.name.localeCompare(b.name, 'ko');
-    });
-
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '80px', fontFamily: 'sans-serif' }}>
       
@@ -149,6 +156,36 @@ export default function App() {
             ))}
           </div>
 
+          {/* ⭐ 현황판 섹션 추가 */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(4, 1fr)', 
+            gap: '10px', 
+            margin: '0 15px 15px', 
+            background: 'white', 
+            padding: '20px', 
+            borderRadius: '25px',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
+            textAlign: 'center'
+          }}>
+            <div>
+              <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>총원</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b472e' }}>{stats.total}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>복귀</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#2ecc71' }}>{stats.returned}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>미복귀</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#e74c3c' }}>{stats.notReturned}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>잔류</div>
+              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3498db' }}>{stats.stay}</div>
+            </div>
+          </div>
+
           {currentMembers.map(m => {
               const isMe = m.id === myId;
               const isTargetSenior = m.name === "신준섭";
@@ -156,13 +193,11 @@ export default function App() {
               return (
                 <div key={m.id} style={{ background: 'white', padding: '20px', borderRadius: '25px', margin: '0 15px 15px', border: isMe ? '2px solid #e9ce63' : 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', position: 'relative' }}>
                   
-                  {/* ⭐ 시니어 전용 삭제 버튼 (자기 자신은 제외) */}
                   {isSeniorKatusa && !isMe && (
                     <button onClick={() => deleteMember(m)} style={{ position: 'absolute', top: '18px', right: '18px', border: 'none', background: 'none', color: '#ddd', cursor: 'pointer', fontSize: '18px' }}>✕</button>
                   )}
 
                   <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    {/* ⭐ 배지 위치 정중앙 정렬을 위한 Flex 레이아웃 */}
                     <div onClick={() => registerMyDevice(m)} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: (!myId && !m.isRegistered) ? 'pointer' : 'default' }}>
                       <span style={{ color: m.isRegistered ? '#333' : '#bbb', fontWeight: 'bold', fontSize: '19px', lineHeight: '1' }}>
                         {m.name}
