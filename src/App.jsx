@@ -144,6 +144,7 @@ export default function App() {
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '80px', fontFamily: 'sans-serif' }}>
       
+      {/* 삼성폰 등록 오류 해결용 초기화 버튼 */}
       <div style={{ padding: '10px', background: '#eee', textAlign: 'center' }}>
         <button onClick={forceResetStorage} style={{ background: '#ff4d4f', color: 'white', border: 'none', padding: '5px 15px', borderRadius: '5px', fontSize: '12px', fontWeight: 'bold' }}>
           ⚠️ 등록 오류 시 클릭 (초기화)
@@ -191,8 +192,8 @@ export default function App() {
       `}</style>
 
       <div style={{ background: '#3b472e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
-        {/* 상단 제목 수정 부분 */}
-        <h2 style={{ margin: '0 0 10px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>분대 관리 시스템</h2>
+        {/* 제목을 다시 Katusa Tracker로 통일 */}
+        <h2 style={{ margin: '0 0 10px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>Katusa Tracker</h2>
         
         <div style={{ display: 'grid', gap: '10px', marginBottom: '20px', background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '15px' }}>
            <div style={{ display: 'flex', gap: '8px' }}>
