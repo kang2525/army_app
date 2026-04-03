@@ -39,7 +39,6 @@ export default function App() {
       const data = snapshot.val();
       if (data) {
         const logArr = Object.keys(data).map(key => ({ ...data[key], id: key }));
-        // 최신순 정렬
         setLogs(logArr.sort((a, b) => b.timestamp - a.timestamp).slice(0, 50));
       } else { setLogs([]); }
     });
@@ -47,7 +46,7 @@ export default function App() {
 
   const registerMyDevice = (member) => {
     if (myId) {
-      alert("이 기기는 이미 등록되어 있습니다.");
+      alert("이 기기는 이미 등록되어 있습니다. 변경하려면 먼저 등록을 해제하세요.");
       return;
     }
     if (member.isRegistered) {
@@ -59,7 +58,16 @@ export default function App() {
       update(ref(db, `members/${member.id}`), { isRegistered: true });
       localStorage.setItem('katusa_my_id', member.id);
       setMyId(member.id);
-      alert(`${member.name} 대원으로 등록되었습니다.`);
+    }
+  };
+
+  // ⭐ 기기 등록 해제 함수
+  const unregisterDevice = (member) => {
+    if (window.confirm(`[${member.name}] 등록을 해제하시겠습니까?\n해제 후에는 다시 본인 이름을 선택해야 합니다.`)) {
+      update(ref(db, `members/${member.id}`), { isRegistered: false });
+      localStorage.removeItem('katusa_my_id');
+      setMyId(null);
+      alert("등록이 해제되었습니다.");
     }
   };
 
@@ -80,9 +88,7 @@ export default function App() {
     update(ref(db, `members/${member.id}`), { status: newStatus });
     const now = new Date();
     push(ref(db, 'logs'), {
-      name: member.name, 
-      unit: member.unit, 
-      status: newStatus,
+      name: member.name, unit: member.unit, status: newStatus,
       timeString: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
       dateString: now.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }),
       timestamp: now.getTime()
@@ -105,13 +111,6 @@ export default function App() {
       if (a.joinDate !== b.joinDate) return new Date(a.joinDate) - new Date(b.joinDate);
       return a.name.localeCompare(b.name, 'ko');
     });
-
-  const stats = {
-    total: currentMembers.length,
-    returned: currentMembers.filter(m => m.status === '복귀').length,
-    notReturned: currentMembers.filter(m => m.status === '미복귀' || !m.status).length,
-    stay: currentMembers.filter(m => m.status === '잔류').length
-  };
 
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '80px', fontFamily: 'sans-serif' }}>
@@ -147,29 +146,36 @@ export default function App() {
             ))}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-around', background: 'white', margin: '0 15px 15px', padding: '15px', borderRadius: '15px' }}>
-            <div style={{textAlign:'center'}}><small style={{color:'#999'}}>총원</small><br/><b>{stats.total}</b></div>
-            <div style={{textAlign:'center'}}><small style={{color:'#999'}}>복귀</small><br/><b style={{color:'#2ecc71'}}>{stats.returned}</b></div>
-            <div style={{textAlign:'center'}}><small style={{color:'#999'}}>미복귀</small><br/><b style={{color:'#e74c3c'}}>{stats.notReturned}</b></div>
-            <div style={{textAlign:'center'}}><small style={{color:'#999'}}>잔류</small><br/><b style={{color:'#3498db'}}>{stats.stay}</b></div>
-          </div>
-
           {currentMembers.map(m => {
               const isMe = m.id === myId;
               const pct = calculatePercent(m.joinDate);
               return (
-                <div key={m.id} style={{ background: 'white', padding: '20px', borderRadius: '25px', margin: '0 15px 15px', border: isMe ? '2px solid #e9ce63' : 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-                  <div style={{ marginBottom: '15px' }}>
-                    <div onClick={() => registerMyDevice(m)} style={{ cursor: (!myId && !m.isRegistered) ? 'pointer' : 'default' }}>
+                <div key={m.id} style={{ background: 'white', padding: '20px', borderRadius: '25px', margin: '0 15px 15px', border: isMe ? '2px solid #e9ce63' : 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', position: 'relative' }}>
+                  
+                  <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div onClick={() => registerMyDevice(m)} style={{ cursor: (!myId && !m.isRegistered) ? 'pointer' : 'default', flex: 1 }}>
                       <span style={{ color: m.isRegistered ? '#333' : '#bbb', fontWeight: 'bold', fontSize: '19px' }}>
                         {m.name} {m.isRegistered && "📱"}
                       </span>
                       <span style={{ fontSize: '13px', color: '#ccc', marginLeft:'10px' }}>{pct}%</span>
+                      {isMe && <span style={{ display: 'block', fontSize: '11px', color: '#73c088', marginTop: '2px' }}>나의 기기</span>}
                     </div>
+
+                    {/* ⭐ 기기 해제 버튼: 오직 본인 카드에만 노출 */}
+                    {isMe && (
+                      <button 
+                        onClick={() => unregisterDevice(m)} 
+                        style={{ background: '#fff1f0', color: '#ff4d4f', border: '1px solid #ffa39e', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                      >
+                        등록 해제
+                      </button>
+                    )}
                   </div>
+
                   <div style={{ width: '100%', height: '7px', background: '#f1f3f5', borderRadius: '4px', marginBottom: '22px', overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: '#73c088' }} />
                   </div>
+
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button style={{ flex: 1, padding: '15px 0', borderRadius: '12px', border: 'none', background: m.status === '복귀' ? '#2ecc71' : '#f1f3f5', color: m.status === '복귀' ? 'white' : '#adb5bd', fontWeight: 'bold', opacity: isMe ? 1 : 0.4 }} onClick={() => handleStatusUpdate(m, '복귀')}>복귀</button>
                     <button style={{ flex: 1, padding: '15px 0', borderRadius: '12px', border: 'none', background: m.status === '미복귀' || !m.status ? '#e74c3c' : '#f1f3f5', color: m.status === '미복귀' || !m.status ? 'white' : '#adb5bd', fontWeight: 'bold', opacity: isMe ? 1 : 0.4 }} onClick={() => handleStatusUpdate(m, '미복귀')}>미복귀</button>
@@ -182,28 +188,17 @@ export default function App() {
       ) : (
         <div style={{ padding: '20px' }}>
           {view === 'logs' ? (
-            <div>
-              <h4 style={{ margin: '0 0 15px 5px', color: '#555' }}>실시간 활동 로그</h4>
-              {logs.map(log => (
-                <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', borderRadius: '15px', marginBottom: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
-                  <div>
-                    <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '3px' }}>{log.dateString} {log.timeString}</div>
-                    <b style={{ fontSize: '16px', color: '#333' }}>{log.name}</b>
-                    <span style={{ fontSize: '12px', color: '#bbb', marginLeft: '8px' }}>({log.unit})</span>
-                  </div>
-                  <div style={{ 
-                    padding: '6px 12px', 
-                    borderRadius: '8px', 
-                    fontSize: '13px', 
-                    fontWeight: 'bold', 
-                    color: 'white',
-                    background: log.status === '복귀' ? '#2ecc71' : log.status === '잔류' ? '#3498db' : '#e74c3c'
-                  }}>
-                    {log.status}
-                  </div>
+            logs.map(log => (
+              <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', borderRadius: '15px', marginBottom: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                <div>
+                  <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '3px' }}>{log.dateString} {log.timeString}</div>
+                  <b style={{ fontSize: '16px', color: '#333' }}>{log.name}</b>
                 </div>
-              ))}
-            </div>
+                <div style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', color: 'white', background: log.status === '복귀' ? '#2ecc71' : log.status === '잔류' ? '#3498db' : '#e74c3c' }}>
+                  {log.status}
+                </div>
+              </div>
+            ))
           ) : <Calendar onClickDay={setSelectedDate} value={selectedDate} />}
         </div>
       )}
