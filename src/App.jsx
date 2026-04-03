@@ -63,7 +63,7 @@ export default function App() {
   };
 
   const registerMyDevice = (member) => {
-    if (myId) { alert("에러 발생 지점입니다."); return; }
+    if (myId) { alert("이미 등록된 기기입니다."); return; }
     if (member.isRegistered) { alert("이미 등록된 사람입니다."); return; }
     if (window.confirm(`[${member.name}] 등록할래말래`)) {
       update(ref(db, `members/${member.id}`), { isRegistered: true });
