@@ -4,6 +4,7 @@ import 'react-calendar/dist/Calendar.css'
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, update, push, remove } from 'firebase/database';
 
+// 1. Firebase 설정 (제공해주신 설정값 유지)
 const firebaseConfig = {
   apiKey: "AIzaSyBbqaA06Uq05IFDbWDOMeBOlRy2eqF0OR0E",
   authDomain: "armyapp-f95eb.firebaseapp.com",
@@ -30,14 +31,21 @@ export default function App() {
   const [newUnit, setNewUnit] = useState('HHC');
   const [newJoinDate, setNewJoinDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // 2. 데이터 실시간 동기화
   useEffect(() => {
-    // 브라우저 탭(상단바) 이름을 Katusa Tracker로 설정
     document.title = "Katusa Tracker";
 
-    onValue(ref(db, 'members'), (snapshot) => {
+    const membersRef = ref(db, 'members');
+    onValue(membersRef, (snapshot) => {
       const data = snapshot.val();
-      setMembers(data ? Object.keys(data).map(key => ({ ...data[key], id: key })) : []);
+      // 데이터가 없을 때를 대비해 빈 배열 처리
+      if (data) {
+        setMembers(Object.keys(data).map(key => ({ ...data[key], id: key })));
+      } else {
+        setMembers([]);
+      }
     });
+
     onValue(ref(db, 'logs'), (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -66,6 +74,37 @@ export default function App() {
     stay: currentMembers.filter(m => m.status === '잔류').length
   };
 
+  // 3. 인원 추가 함수 (중복 체크 포함)
+  const addMember = () => {
+    const trimmedName = newName.trim();
+    if (!trimmedName) {
+      alert("이름을 입력해 주세요.");
+      return;
+    }
+
+    // 데이터베이스에 동일한 이름이 있는지 확인
+    const isDuplicate = members.some(m => m.name === trimmedName);
+
+    if (isDuplicate) {
+      alert(`[${trimmedName}]님은 이미 등록되어 있습니다.`);
+      return; // 중복이면 여기서 중단
+    }
+
+    const id = Date.now().toString();
+    set(ref(db, `members/${id}`), { 
+      id, 
+      name: trimmedName, 
+      unit: newUnit, 
+      joinDate: newJoinDate, 
+      status: '미복귀', 
+      isRegistered: false 
+    }).then(() => {
+      setNewName(''); // 성공 시 입력창 초기화
+    }).catch((err) => {
+      alert("등록 실패: " + err.message);
+    });
+  };
+
   const registerMyDevice = (member) => {
     if (myId) { 
       const currentMe = members.find(m => m.id === myId);
@@ -74,7 +113,7 @@ export default function App() {
     }
     if (member.isRegistered) { alert("이미 다른 기기에서 등록된 사람입니다."); return; }
     
-    if (window.confirm(`[${member.name}] 등록 할래말래`)) {
+    if (window.confirm(`[${member.name}] 등록 하시겠습니까?`)) {
       update(ref(db, `members/${member.id}`), { isRegistered: true });
       localStorage.setItem('katusa_my_id', member.id);
       setMyId(member.id);
@@ -97,12 +136,11 @@ export default function App() {
         updates[`/members/${m.id}/status`] = '미복귀';
       });
       update(ref(db), updates);
-      alert("전원 미복귀로 초기화되었습니다.");
     }
   };
 
   const deleteMember = (member) => {
-    if (window.confirm(`[${member.name}] 사람을 영구 삭제하시겠습니까?`)) {
+    if (window.confirm(`[${member.name}] 인원을 영구 삭제하시겠습니까?`)) {
       remove(ref(db, `members/${member.id}`));
     }
   };
@@ -128,75 +166,18 @@ export default function App() {
     });
   };
 
-  const addMember = () => {
-    if (!newName) return;
-
-    // 1. 중복 이름 체크 로직 추가
-    const isDuplicate = members.some(m => m.name.trim() === newName.trim());
-
-    if (isDuplicate) {
-      alert(`[${newName}]님은 이미 등록되어 있는 인원입니다.`);
-      return; // 함수 종료 (추가 안 함)
-    }
-
-    // 2. 중복이 아닐 경우에만 Firebase에 저장
-    const id = Date.now().toString();
-    set(ref(db, `members/${id}`), { 
-      id, 
-      name: newName.trim(), 
-      unit: newUnit, 
-      joinDate: newJoinDate, 
-      status: '미복귀', 
-      isRegistered: false 
-    });
-
-    setNewName(''); // 입력창 초기화
-    alert(`[${newName}]님이 성공적으로 추가되었습니다.`);
-  };
-
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '80px', fontFamily: 'sans-serif' }}>
       
       <style>{`
-        @keyframes shine {
-          0% { left: -100%; }
-          50% { left: 100%; }
-          100% { left: 100%; }
-        }
-        .senior-card {
-          background: #1a1a1a !important;
-          border: 2px solid #e9ce63 !important;
-          box-shadow: 0 10px 20px rgba(0,0,0,0.3) !important;
-        }
-        .senior-name {
-          background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c);
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          font-weight: 900 !important;
-        }
-        .senior-badge {
-          position: relative;
-          background: #e9ce63;
-          color: #000;
-          font-size: 10px;
-          padding: 3px 8px;
-          border-radius: 4px;
-          font-weight: 900;
-          overflow: hidden;
-          display: inline-flex;
-          align-items: center;
-        }
-        .senior-badge::after {
-          content: "";
-          position: absolute;
-          top: 0; left: -100%;
-          width: 50%; height: 100%;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
-          transform: skewX(-20deg);
-          animation: shine 3s infinite;
-        }
+        @keyframes shine { 0% { left: -100%; } 50% { left: 100%; } 100% { left: 100%; } }
+        .senior-card { background: #1a1a1a !important; border: 2px solid #e9ce63 !important; box-shadow: 0 10px 20px rgba(0,0,0,0.3) !important; }
+        .senior-name { background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900 !important; }
+        .senior-badge { position: relative; background: #e9ce63; color: #000; font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 900; overflow: hidden; display: inline-flex; align-items: center; }
+        .senior-badge::after { content: ""; position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); transform: skewX(-20deg); animation: shine 3s infinite; }
       `}</style>
 
+      {/* 헤더 섹션 */}
       <div style={{ background: '#3b472e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
         <h2 style={{ margin: '0 0 10px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>Katusa Tracker</h2>
         
@@ -252,27 +233,20 @@ export default function App() {
                   background: 'white', padding: '20px', borderRadius: '25px', margin: '0 15px 15px', 
                   border: isMe ? '2px solid #e9ce63' : 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', position: 'relative' 
                 }}>
-                  
                   {isSeniorKatusa && !isMe && (
-                    <button onClick={() => deleteMember(m)} style={{ position: 'absolute', top: '18px', right: '18px', border: 'none', background: 'none', color: isTargetSenior ? '#555' : '#ddd', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+                    <button onClick={() => deleteMember(m)} style={{ position: 'absolute', top: '18px', right: '18px', border: 'none', background: 'none', color: isTargetSenior ? '#555' : '#ddd', fontSize: '18px' }}>✕</button>
                   )}
-
                   <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div onClick={() => registerMyDevice(m)} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: (!myId && !m.isRegistered) ? 'pointer' : 'default' }}>
-                      <span className={isTargetSenior ? "senior-name" : ""} style={{ 
-                        color: isTargetSenior ? "transparent" : (m.isRegistered ? '#333' : '#bbb'), 
-                        fontWeight: 'bold', fontSize: '19px', lineHeight: '1' 
-                      }}>{m.name}</span>
+                    <div onClick={() => registerMyDevice(m)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className={isTargetSenior ? "senior-name" : ""} style={{ color: isTargetSenior ? "transparent" : (m.isRegistered ? '#333' : '#bbb'), fontWeight: 'bold', fontSize: '19px' }}>{m.name}</span>
                       {isTargetSenior && <span className="senior-badge">SENIOR</span>}
-                      <span style={{ fontSize: '13px', color: isTargetSenior ? '#777' : '#ccc', lineHeight: '1' }}>{pct}%</span>
+                      <span style={{ fontSize: '13px', color: isTargetSenior ? '#777' : '#ccc' }}>{pct}%</span>
                     </div>
-                    {isMe && <button onClick={() => unregisterDevice(m)} style={{ background: isTargetSenior ? '#333' : '#fff1f0', color: '#ff4d4f', border: isTargetSenior ? '1px solid #ff4d4f' : '1px solid #ffa39e', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', fontWeight: 'bold' }}>해제</button>}
+                    {isMe && <button onClick={() => unregisterDevice(m)} style={{ background: isTargetSenior ? '#333' : '#fff1f0', color: '#ff4d4f', border: '1px solid #ffa39e', borderRadius: '6px', padding: '4px 8px', fontSize: '11px' }}>해제</button>}
                   </div>
-
                   <div style={{ width: '100%', height: '7px', background: isTargetSenior ? '#333' : '#f1f3f5', borderRadius: '4px', marginBottom: '22px', overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: isTargetSenior ? 'linear-gradient(90deg, #bf953f, #e9ce63)' : '#73c088' }} />
                   </div>
-
                   <div style={{ display: 'flex', gap: '10px' }}>
                     {['복귀', '미복귀', '잔류'].map(status => (
                       <button key={status} style={{ 
@@ -298,7 +272,7 @@ export default function App() {
               {logs.map(log => (
                 <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', borderRadius: '15px', marginBottom: '10px' }}>
                   <div><div style={{ fontSize: '11px', color: '#aaa' }}>{log.dateString} {log.timeString}</div><b style={{ fontSize: '16px' }}>{log.name}</b></div>
-                  <div style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', color: 'white', background: log.status === '복귀' ? '#2ecc71' : log.status === '잔류' ? '#3498db' : '#e74c3c' }}>{log.status}</div>
+                  <div style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', color: 'white', background: log.status === '복귀' ? '#2ecc71' : log.status === '잔류' ? '#3498db' : log.status === '미복귀' ? '#e74c3c' : '#ccc' }}>{log.status}</div>
                 </div>
               ))}
             </div>
