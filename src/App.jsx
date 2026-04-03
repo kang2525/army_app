@@ -44,7 +44,7 @@ export default function App() {
     });
   }, []);
 
-  // ⭐ 시니어 카투사 판별 로직 (이름이 '신준섭'이고 내 기기로 등록된 경우)
+  // ⭐ 시니어 카투사 판별 로직
   const me = members.find(m => m.id === myId);
   const isSeniorKatusa = me?.name === "신준섭";
 
@@ -66,14 +66,12 @@ export default function App() {
     }
   };
 
-  // ⭐ 대원 삭제 기능 (시니어 전용)
   const deleteMember = (member) => {
     if (window.confirm(`[${member.name}] 대원을 명단에서 영구 삭제하시겠습니까?`)) {
       remove(ref(db, `members/${member.id}`));
     }
   };
 
-  // ⭐ 로그 초기화 기능 (시니어 전용)
   const clearLogs = () => {
     if (window.confirm("모든 활동 로그를 삭제하시겠습니까?")) {
       remove(ref(db, 'logs'));
@@ -123,7 +121,6 @@ export default function App() {
       <div style={{ background: '#3b472e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
         <h2 style={{ margin: '0 0 10px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>Katusa Tracker</h2>
         
-        {/* 인원 추가 */}
         <div style={{ display: 'grid', gap: '10px', marginBottom: '20px', background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '15px' }}>
            <div style={{ display: 'flex', gap: '8px' }}>
               <select style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none' }} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
@@ -159,25 +156,35 @@ export default function App() {
               return (
                 <div key={m.id} style={{ background: 'white', padding: '20px', borderRadius: '25px', margin: '0 15px 15px', border: isMe ? '2px solid #e9ce63' : 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', position: 'relative' }}>
                   
-                  {/* 시니어 전용 삭제 버튼 */}
-                  {isSeniorKatusa && (
-                    <button onClick={() => deleteMember(m)} style={{ position: 'absolute', top: '15px', right: '15px', border: 'none', background: 'none', color: '#ccc', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+                  {/* ⭐ 시니어 전용 삭제 버튼 (자기 자신은 제외) */}
+                  {isSeniorKatusa && !isMe && (
+                    <button onClick={() => deleteMember(m)} style={{ position: 'absolute', top: '18px', right: '18px', border: 'none', background: 'none', color: '#ddd', cursor: 'pointer', fontSize: '18px' }}>✕</button>
                   )}
 
                   <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div onClick={() => registerMyDevice(m)} style={{ cursor: (!myId && !m.isRegistered) ? 'pointer' : 'default' }}>
-                      <span style={{ color: m.isRegistered ? '#333' : '#bbb', fontWeight: 'bold', fontSize: '19px' }}>
+                    {/* ⭐ 배지 위치 정중앙 정렬을 위한 Flex 레이아웃 */}
+                    <div onClick={() => registerMyDevice(m)} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: (!myId && !m.isRegistered) ? 'pointer' : 'default' }}>
+                      <span style={{ color: m.isRegistered ? '#333' : '#bbb', fontWeight: 'bold', fontSize: '19px', lineHeight: '1' }}>
                         {m.name}
                       </span>
-                      {/* ⭐ 시니어 배지 디자인 */}
                       {isTargetSenior && (
-                        <span style={{ marginLeft: '8px', background: '#000', color: '#e9ce63', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', verticalAlign: 'middle', fontWeight: '900' }}>SENIOR</span>
+                        <span style={{ 
+                          background: '#000', 
+                          color: '#e9ce63', 
+                          fontSize: '10px', 
+                          padding: '3px 6px', 
+                          borderRadius: '4px', 
+                          fontWeight: '900',
+                          lineHeight: '1',
+                          display: 'inline-flex',
+                          alignItems: 'center'
+                        }}>SENIOR</span>
                       )}
-                      <span style={{ fontSize: '13px', color: '#ccc', marginLeft:'8px' }}>{pct}%</span>
+                      <span style={{ fontSize: '13px', color: '#ccc', lineHeight: '1' }}>{pct}%</span>
                     </div>
 
                     {isMe && (
-                      <button onClick={() => unregisterDevice(m)} style={{ background: '#fff1f0', color: '#ff4d4f', border: '1px solid #ffa39e', borderRadius: '6px', padding: '4px 8px', fontSize: '11px' }}>해제</button>
+                      <button onClick={() => unregisterDevice(m)} style={{ background: '#fff1f0', color: '#ff4d4f', border: '1px solid #ffa39e', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', fontWeight: 'bold' }}>해제</button>
                     )}
                   </div>
 
@@ -204,7 +211,6 @@ export default function App() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h4 style={{ margin: 0, color: '#555' }}>활동 로그</h4>
-                {/* ⭐ 시니어 전용 로그 초기화 버튼 */}
                 {isSeniorKatusa && <button onClick={clearLogs} style={{ color: '#ff4d4f', border: 'none', background: 'none', fontSize: '12px', cursor: 'pointer' }}>로그 초기화</button>}
               </div>
               {logs.map(log => (
