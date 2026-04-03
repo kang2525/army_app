@@ -130,11 +130,28 @@ export default function App() {
 
   const addMember = () => {
     if (!newName) return;
+
+    // 1. 중복 이름 체크 로직 추가
+    const isDuplicate = members.some(m => m.name.trim() === newName.trim());
+
+    if (isDuplicate) {
+      alert(`[${newName}]님은 이미 등록되어 있는 인원입니다.`);
+      return; // 함수 종료 (추가 안 함)
+    }
+
+    // 2. 중복이 아닐 경우에만 Firebase에 저장
     const id = Date.now().toString();
     set(ref(db, `members/${id}`), { 
-      id, name: newName, unit: newUnit, joinDate: newJoinDate, status: '미복귀', isRegistered: false 
+      id, 
+      name: newName.trim(), 
+      unit: newUnit, 
+      joinDate: newJoinDate, 
+      status: '미복귀', 
+      isRegistered: false 
     });
-    setNewName('');
+
+    setNewName(''); // 입력창 초기화
+    alert(`[${newName}]님이 성공적으로 추가되었습니다.`);
   };
 
   return (
