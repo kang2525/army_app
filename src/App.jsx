@@ -148,7 +148,7 @@ export default function App() {
             onClick={() => { if(window.confirm("기기 등록 정보를 모두 삭제하시겠습니까?")) { localStorage.clear(); window.location.reload(); } }} 
             style={{ background: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', padding: '5px 10px', fontSize: '11px', fontWeight: 'bold' }}
           >
-            기기 데이터 강제 초기화
+            기록 삭제
           </button>
         </div>
 
