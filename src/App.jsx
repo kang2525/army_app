@@ -39,6 +39,7 @@ export default function App() {
       const data = snapshot.val();
       if (data) {
         const logArr = Object.keys(data).map(key => ({ ...data[key], id: key }));
+        // 최신순 정렬
         setLogs(logArr.sort((a, b) => b.timestamp - a.timestamp).slice(0, 50));
       } else { setLogs([]); }
     });
@@ -79,7 +80,9 @@ export default function App() {
     update(ref(db, `members/${member.id}`), { status: newStatus });
     const now = new Date();
     push(ref(db, 'logs'), {
-      name: member.name, unit: member.unit, status: newStatus,
+      name: member.name, 
+      unit: member.unit, 
+      status: newStatus,
       timeString: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
       dateString: now.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }),
       timestamp: now.getTime()
@@ -96,15 +99,10 @@ export default function App() {
     setNewName('');
   };
 
-  // ⭐ 정렬 로직: 1순위 입대일(joinDate), 2순위 이름(name)
   const currentMembers = members
     .filter(m => m.unit === activeTab)
     .sort((a, b) => {
-      // 1. 입대일 비교
-      if (a.joinDate !== b.joinDate) {
-        return new Date(a.joinDate) - new Date(b.joinDate);
-      }
-      // 2. 입대일이 같으면 이름 가나다순 비교
+      if (a.joinDate !== b.joinDate) return new Date(a.joinDate) - new Date(b.joinDate);
       return a.name.localeCompare(b.name, 'ko');
     });
 
@@ -159,10 +157,8 @@ export default function App() {
           {currentMembers.map(m => {
               const isMe = m.id === myId;
               const pct = calculatePercent(m.joinDate);
-              
               return (
                 <div key={m.id} style={{ background: 'white', padding: '20px', borderRadius: '25px', margin: '0 15px 15px', border: isMe ? '2px solid #e9ce63' : 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-                  
                   <div style={{ marginBottom: '15px' }}>
                     <div onClick={() => registerMyDevice(m)} style={{ cursor: (!myId && !m.isRegistered) ? 'pointer' : 'default' }}>
                       <span style={{ color: m.isRegistered ? '#333' : '#bbb', fontWeight: 'bold', fontSize: '19px' }}>
@@ -171,11 +167,9 @@ export default function App() {
                       <span style={{ fontSize: '13px', color: '#ccc', marginLeft:'10px' }}>{pct}%</span>
                     </div>
                   </div>
-
                   <div style={{ width: '100%', height: '7px', background: '#f1f3f5', borderRadius: '4px', marginBottom: '22px', overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: '#73c088' }} />
                   </div>
-
                   <div style={{ display: 'flex', gap: '10px' }}>
                     <button style={{ flex: 1, padding: '15px 0', borderRadius: '12px', border: 'none', background: m.status === '복귀' ? '#2ecc71' : '#f1f3f5', color: m.status === '복귀' ? 'white' : '#adb5bd', fontWeight: 'bold', opacity: isMe ? 1 : 0.4 }} onClick={() => handleStatusUpdate(m, '복귀')}>복귀</button>
                     <button style={{ flex: 1, padding: '15px 0', borderRadius: '12px', border: 'none', background: m.status === '미복귀' || !m.status ? '#e74c3c' : '#f1f3f5', color: m.status === '미복귀' || !m.status ? 'white' : '#adb5bd', fontWeight: 'bold', opacity: isMe ? 1 : 0.4 }} onClick={() => handleStatusUpdate(m, '미복귀')}>미복귀</button>
@@ -188,12 +182,28 @@ export default function App() {
       ) : (
         <div style={{ padding: '20px' }}>
           {view === 'logs' ? (
-            logs.map(log => (
-              <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '15px', borderBottom: '1px solid #eee', background: 'white', borderRadius: '10px', marginBottom: '8px' }}>
-                <b>{log.name}</b>
-                <span style={{ color: log.status === '복귀' ? '#2ecc71' : '#e74c3c', fontWeight: 'bold' }}>{log.status}</span>
-              </div>
-            ))
+            <div>
+              <h4 style={{ margin: '0 0 15px 5px', color: '#555' }}>실시간 활동 로그</h4>
+              {logs.map(log => (
+                <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', borderRadius: '15px', marginBottom: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '3px' }}>{log.dateString} {log.timeString}</div>
+                    <b style={{ fontSize: '16px', color: '#333' }}>{log.name}</b>
+                    <span style={{ fontSize: '12px', color: '#bbb', marginLeft: '8px' }}>({log.unit})</span>
+                  </div>
+                  <div style={{ 
+                    padding: '6px 12px', 
+                    borderRadius: '8px', 
+                    fontSize: '13px', 
+                    fontWeight: 'bold', 
+                    color: 'white',
+                    background: log.status === '복귀' ? '#2ecc71' : log.status === '잔류' ? '#3498db' : '#e74c3c'
+                  }}>
+                    {log.status}
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : <Calendar onClickDay={setSelectedDate} value={selectedDate} />}
         </div>
       )}
