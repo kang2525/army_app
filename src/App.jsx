@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import Calendar from 'react-calendar'
 import 'react-calendar/dist/Calendar.css'
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, onValue, set, update, push } from 'firebase/database';
+import { getDatabase, ref, onValue, set, update, push, remove } from 'firebase/database';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBbqaA06Uq05IFDbWDOMeBOlRy2eqF0OR0E",
@@ -44,30 +44,39 @@ export default function App() {
     });
   }, []);
 
-  const registerMyDevice = (member) => {
-    if (myId) {
-      alert("이 기기는 이미 등록되어 있습니다. 변경하려면 먼저 등록을 해제하세요.");
-      return;
-    }
-    if (member.isRegistered) {
-      alert("해당 대원은 이미 다른 기기에 등록되어 있습니다.");
-      return;
-    }
+  // ⭐ 시니어 카투사 판별 로직 (이름이 '신준섭'이고 내 기기로 등록된 경우)
+  const me = members.find(m => m.id === myId);
+  const isSeniorKatusa = me?.name === "신준섭";
 
-    if (window.confirm(`이 기기를 [${member.name}] 대원의 기기로 등록하시겠습니까?`)) {
+  const registerMyDevice = (member) => {
+    if (myId) { alert("이미 등록된 기기입니다."); return; }
+    if (member.isRegistered) { alert("이미 등록된 대원입니다."); return; }
+    if (window.confirm(`[${member.name}] 대원으로 등록하시겠습니까?`)) {
       update(ref(db, `members/${member.id}`), { isRegistered: true });
       localStorage.setItem('katusa_my_id', member.id);
       setMyId(member.id);
     }
   };
 
-  // ⭐ 기기 등록 해제 함수
   const unregisterDevice = (member) => {
-    if (window.confirm(`[${member.name}] 등록을 해제하시겠습니까?\n해제 후에는 다시 본인 이름을 선택해야 합니다.`)) {
+    if (window.confirm("등록을 해제하시겠습니까?")) {
       update(ref(db, `members/${member.id}`), { isRegistered: false });
       localStorage.removeItem('katusa_my_id');
       setMyId(null);
-      alert("등록이 해제되었습니다.");
+    }
+  };
+
+  // ⭐ 대원 삭제 기능 (시니어 전용)
+  const deleteMember = (member) => {
+    if (window.confirm(`[${member.name}] 대원을 명단에서 영구 삭제하시겠습니까?`)) {
+      remove(ref(db, `members/${member.id}`));
+    }
+  };
+
+  // ⭐ 로그 초기화 기능 (시니어 전용)
+  const clearLogs = () => {
+    if (window.confirm("모든 활동 로그를 삭제하시겠습니까?")) {
+      remove(ref(db, 'logs'));
     }
   };
 
@@ -81,10 +90,7 @@ export default function App() {
   };
 
   const handleStatusUpdate = (member, newStatus) => {
-    if (member.id !== myId) {
-      alert("본인의 이름 카드를 클릭하여 기기를 먼저 등록해 주세요.");
-      return;
-    }
+    if (member.id !== myId) { alert("본인 카드만 수정 가능합니다."); return; }
     update(ref(db, `members/${member.id}`), { status: newStatus });
     const now = new Date();
     push(ref(db, 'logs'), {
@@ -99,8 +105,7 @@ export default function App() {
     if (!newName) return;
     const id = Date.now().toString();
     set(ref(db, `members/${id}`), { 
-      id, name: newName, unit: newUnit, joinDate: newJoinDate, 
-      status: '미복귀', isRegistered: false 
+      id, name: newName, unit: newUnit, joinDate: newJoinDate, status: '미복귀', isRegistered: false 
     });
     setNewName('');
   };
@@ -118,6 +123,7 @@ export default function App() {
       <div style={{ background: '#3b472e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
         <h2 style={{ margin: '0 0 10px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>Katusa Tracker</h2>
         
+        {/* 인원 추가 */}
         <div style={{ display: 'grid', gap: '10px', marginBottom: '20px', background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '15px' }}>
            <div style={{ display: 'flex', gap: '8px' }}>
               <select style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none' }} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
@@ -148,27 +154,30 @@ export default function App() {
 
           {currentMembers.map(m => {
               const isMe = m.id === myId;
+              const isTargetSenior = m.name === "신준섭";
               const pct = calculatePercent(m.joinDate);
               return (
                 <div key={m.id} style={{ background: 'white', padding: '20px', borderRadius: '25px', margin: '0 15px 15px', border: isMe ? '2px solid #e9ce63' : 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', position: 'relative' }}>
                   
-                  <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div onClick={() => registerMyDevice(m)} style={{ cursor: (!myId && !m.isRegistered) ? 'pointer' : 'default', flex: 1 }}>
+                  {/* 시니어 전용 삭제 버튼 */}
+                  {isSeniorKatusa && (
+                    <button onClick={() => deleteMember(m)} style={{ position: 'absolute', top: '15px', right: '15px', border: 'none', background: 'none', color: '#ccc', cursor: 'pointer', fontSize: '18px' }}>✕</button>
+                  )}
+
+                  <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div onClick={() => registerMyDevice(m)} style={{ cursor: (!myId && !m.isRegistered) ? 'pointer' : 'default' }}>
                       <span style={{ color: m.isRegistered ? '#333' : '#bbb', fontWeight: 'bold', fontSize: '19px' }}>
-                        {m.name} {m.isRegistered && "📱"}
+                        {m.name}
                       </span>
-                      <span style={{ fontSize: '13px', color: '#ccc', marginLeft:'10px' }}>{pct}%</span>
-                      {isMe && <span style={{ display: 'block', fontSize: '11px', color: '#73c088', marginTop: '2px' }}>나의 기기</span>}
+                      {/* ⭐ 시니어 배지 디자인 */}
+                      {isTargetSenior && (
+                        <span style={{ marginLeft: '8px', background: '#000', color: '#e9ce63', fontSize: '10px', padding: '2px 6px', borderRadius: '4px', verticalAlign: 'middle', fontWeight: '900' }}>SENIOR</span>
+                      )}
+                      <span style={{ fontSize: '13px', color: '#ccc', marginLeft:'8px' }}>{pct}%</span>
                     </div>
 
-                    {/* ⭐ 기기 해제 버튼: 오직 본인 카드에만 노출 */}
                     {isMe && (
-                      <button 
-                        onClick={() => unregisterDevice(m)} 
-                        style={{ background: '#fff1f0', color: '#ff4d4f', border: '1px solid #ffa39e', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
-                      >
-                        등록 해제
-                      </button>
+                      <button onClick={() => unregisterDevice(m)} style={{ background: '#fff1f0', color: '#ff4d4f', border: '1px solid #ffa39e', borderRadius: '6px', padding: '4px 8px', fontSize: '11px' }}>해제</button>
                     )}
                   </div>
 
@@ -177,9 +186,13 @@ export default function App() {
                   </div>
 
                   <div style={{ display: 'flex', gap: '10px' }}>
-                    <button style={{ flex: 1, padding: '15px 0', borderRadius: '12px', border: 'none', background: m.status === '복귀' ? '#2ecc71' : '#f1f3f5', color: m.status === '복귀' ? 'white' : '#adb5bd', fontWeight: 'bold', opacity: isMe ? 1 : 0.4 }} onClick={() => handleStatusUpdate(m, '복귀')}>복귀</button>
-                    <button style={{ flex: 1, padding: '15px 0', borderRadius: '12px', border: 'none', background: m.status === '미복귀' || !m.status ? '#e74c3c' : '#f1f3f5', color: m.status === '미복귀' || !m.status ? 'white' : '#adb5bd', fontWeight: 'bold', opacity: isMe ? 1 : 0.4 }} onClick={() => handleStatusUpdate(m, '미복귀')}>미복귀</button>
-                    <button style={{ flex: 1, padding: '15px 0', borderRadius: '12px', border: 'none', background: m.status === '잔류' ? '#3498db' : '#f1f3f5', color: m.status === '잔류' ? 'white' : '#adb5bd', fontWeight: 'bold', opacity: isMe ? 1 : 0.4 }} onClick={() => handleStatusUpdate(m, '잔류')}>잔류</button>
+                    {['복귀', '미복귀', '잔류'].map(status => (
+                      <button key={status} style={{ 
+                        flex: 1, padding: '15px 0', borderRadius: '12px', border: 'none', 
+                        background: m.status === status ? (status === '복귀' ? '#2ecc71' : status === '잔류' ? '#3498db' : '#e74c3c') : '#f1f3f5', 
+                        color: m.status === status ? 'white' : '#adb5bd', fontWeight: 'bold', opacity: isMe ? 1 : 0.4 
+                      }} onClick={() => handleStatusUpdate(m, status)}>{status}</button>
+                    ))}
                   </div>
                 </div>
               );
@@ -188,17 +201,22 @@ export default function App() {
       ) : (
         <div style={{ padding: '20px' }}>
           {view === 'logs' ? (
-            logs.map(log => (
-              <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', borderRadius: '15px', marginBottom: '10px', boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
-                <div>
-                  <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '3px' }}>{log.dateString} {log.timeString}</div>
-                  <b style={{ fontSize: '16px', color: '#333' }}>{log.name}</b>
-                </div>
-                <div style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', color: 'white', background: log.status === '복귀' ? '#2ecc71' : log.status === '잔류' ? '#3498db' : '#e74c3c' }}>
-                  {log.status}
-                </div>
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h4 style={{ margin: 0, color: '#555' }}>활동 로그</h4>
+                {/* ⭐ 시니어 전용 로그 초기화 버튼 */}
+                {isSeniorKatusa && <button onClick={clearLogs} style={{ color: '#ff4d4f', border: 'none', background: 'none', fontSize: '12px', cursor: 'pointer' }}>로그 초기화</button>}
               </div>
-            ))
+              {logs.map(log => (
+                <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', borderRadius: '15px', marginBottom: '10px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#aaa' }}>{log.dateString} {log.timeString}</div>
+                    <b style={{ fontSize: '16px' }}>{log.name}</b>
+                  </div>
+                  <div style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', color: 'white', background: log.status === '복귀' ? '#2ecc71' : log.status === '잔류' ? '#3498db' : '#e74c3c' }}>{log.status}</div>
+                </div>
+              ))}
+            </div>
           ) : <Calendar onClickDay={setSelectedDate} value={selectedDate} />}
         </div>
       )}
