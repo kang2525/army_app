@@ -4,7 +4,6 @@ import 'react-calendar/dist/Calendar.css'
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, update, remove } from 'firebase/database';
 
-// ⚠️ 본인의 실제 Firebase Config를 사용하세요!
 const firebaseConfig = {
   apiKey: "AIzaSyBbqaA06Uq05IFDbWDOMeBOlRy2eqF0OR0E",
   authDomain: "armyapp-f95eb.firebaseapp.com",
@@ -23,11 +22,14 @@ export default function App() {
   const [view, setView] = useState('main'); 
   const [activeTab, setActiveTab] = useState('HHC');
   const [selectedDate, setSelectedDate] = useState(new Date());
+  
+  // 기기 등록 관련 상태 (로컬 스토리지에서 내 ID 가져오기)
+  const [myId, setMyId] = useState(localStorage.getItem('katusa_my_id') || null);
+
   const [newName, setNewName] = useState('');
   const [newUnit, setNewUnit] = useState('HHC');
   const [newJoinDate, setNewJoinDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // 실시간 데이터 동기화
   useEffect(() => {
     const membersRef = ref(db, 'members');
     return onValue(membersRef, (snapshot) => {
@@ -36,7 +38,26 @@ export default function App() {
     });
   }, []);
 
-  const handleStatusUpdate = (id, newStatus) => update(ref(db, `members/${id}`), { status: newStatus });
+  // 기기 등록 함수
+  const registerMe = (id, name) => {
+    if (window.confirm(`'${name}' 대원으로 이 기기를 등록하시겠습니까?\n등록 후에는 본인의 상태만 변경 가능합니다.`)) {
+      localStorage.setItem('katusa_my_id', id);
+      setMyId(id);
+    }
+  };
+
+  // 등록 해제 (실수했을 경우 대비)
+  const resetMe = () => {
+    if (window.confirm("기기 등록을 해제하시겠습니까?")) {
+      localStorage.removeItem('katusa_my_id');
+      setMyId(null);
+    }
+  };
+
+  const handleStatusUpdate = (id, newStatus) => {
+    if (id !== myId) return; // 내 ID가 아니면 실행 안함
+    update(ref(db, `members/${id}`), { status: newStatus });
+  };
   
   const addMember = () => {
     if (!newName) return;
@@ -63,31 +84,28 @@ export default function App() {
   };
 
   const styles = {
-    container: { maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '60px', fontFamily: 'sans-serif' },
+    container: { maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '80px', fontFamily: 'sans-serif' },
     header: { background: '#2d391e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' },
-    // 타이틀 두께 최대로 (900)
     title: { margin: '0 0 25px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900', letterSpacing: '-0.5px' },
     navTabContainer: { 
-      display: 'flex', 
-      background: 'rgba(255,255,255,0.1)', 
-      margin: '20px 0 10px 0', 
-      borderRadius: '12px', 
-      overflow: 'hidden',
-      border: '1px solid rgba(255,255,255,0.2)'
+      display: 'flex', background: 'rgba(255,255,255,0.1)', margin: '20px 0 10px 0', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.2)'
     },
     navTab: (active) => ({ 
-      flex: 1, padding: '14px', border: 'none', 
-      background: active ? '#e9ce63' : 'transparent', 
-      color: active ? '#2d391e' : 'rgba(255,255,255,0.6)', 
-      fontWeight: 'bold', fontSize: '15px', cursor: 'pointer' 
+      flex: 1, padding: '14px', border: 'none', background: active ? '#e9ce63' : 'transparent', color: active ? '#2d391e' : 'rgba(255,255,255,0.6)', fontWeight: 'bold', fontSize: '15px'
     }),
     statsBar: { display: 'flex', justifyContent: 'space-around', background: 'white', margin: '15px', padding: '15px', borderRadius: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' },
-    card: { background: 'white', padding: '18px', borderRadius: '20px', margin: '12px 15px', boxShadow: '0 2px 5px rgba(0,0,0,0.02)', position: 'relative' },
-    statusBtn: (active, color) => ({ 
+    card: (isMe) => ({ 
+      background: 'white', padding: '18px', borderRadius: '20px', margin: '12px 15px', 
+      boxShadow: isMe ? '0 0 15px rgba(233, 206, 99, 0.4)' : '0 2px 5px rgba(0,0,0,0.02)', 
+      position: 'relative', border: isMe ? '2px solid #e9ce63' : '2px solid transparent',
+      opacity: (myId && !isMe) ? 0.6 : 1 // 내 이름이 등록됐는데 남의 카드면 흐리게
+    }),
+    statusBtn: (active, color, isMe) => ({ 
       flex: 1, padding: '14px 0', borderRadius: '10px', border: 'none', 
       background: active ? color : '#f1f3f5', color: active ? 'white' : '#777', 
-      fontWeight: 'bold', cursor: 'pointer'
-    })
+      fontWeight: 'bold', cursor: isMe ? 'pointer' : 'default'
+    }),
+    footerLink: { textAlign: 'center', fontSize: '12px', color: '#bbb', marginTop: '20px', cursor: 'pointer' }
   };
 
   return (
@@ -120,7 +138,7 @@ export default function App() {
         <>
           <div style={{ display: 'flex', gap: '8px', padding: '15px 20px 5px', overflowX: 'auto' }}>
             {['HHC', 'Alpha', 'Bravo', 'Charlie'].map(u => (
-              <button key={u} style={{ padding: '8px 18px', borderRadius: '20px', border: 'none', background: activeTab === u ? '#2d391e' : '#fff', color: activeTab === u ? '#e9ce63' : '#555', fontWeight: 'bold', whiteSpace: 'nowrap', fontSize: '13px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }} onClick={() => setActiveTab(u)}>{u}</button>
+              <button key={u} style={{ padding: '8px 18px', borderRadius: '20px', border: 'none', background: activeTab === u ? '#2d391e' : '#fff', color: activeTab === u ? '#e9ce63' : '#555', fontWeight: 'bold', whiteSpace: 'nowrap', fontSize: '13px' }} onClick={() => setActiveTab(u)}>{u}</button>
             ))}
           </div>
 
@@ -131,7 +149,8 @@ export default function App() {
             <div style={{textAlign:'center'}}><small style={{color:'#999'}}>잔류</small><br/><b style={{color:'#3498db'}}>{stats.stay}</b></div>
           </div>
 
-          {/* 대원 리스트 정렬: 1순위 입대일, 2순위 이름(가나다) */}
+          {!myId && <div style={{textAlign:'center', color:'#e74c3c', fontSize:'13px', margin:'10px 0'}}>⚠️ 본인의 이름을 클릭하여 기기를 등록하세요.</div>}
+
           {currentMembers
             .sort((a, b) => {
               const dateA = new Date(a.joinDate);
@@ -139,22 +158,28 @@ export default function App() {
               if (dateA - dateB !== 0) return dateA - dateB;
               return a.name.localeCompare(b.name, 'ko');
             })
-            .map(m => (
-              <div key={m.id} style={styles.card}>
-                <button style={{ position:'absolute', top:'18px', right:'18px', border:'none', background:'none', color:'#ddd', fontSize: '18px' }} onClick={() => remove(ref(db, `members/${m.id}`))}>✕</button>
-                <div style={{ marginBottom: '12px', fontWeight: 'bold', fontSize: '18px' }}>
-                  {m.name} <span style={{ fontSize: '12px', color: '#bbb', fontWeight: 'normal' }}>{calculatePercent(m.joinDate)}%</span>
+            .map(m => {
+              const isMe = m.id === myId;
+              return (
+                <div key={m.id} style={styles.card(isMe)} onClick={() => !myId && registerMe(m.id, m.name)}>
+                  <button style={{ position:'absolute', top:'18px', right:'18px', border:'none', background:'none', color:'#ddd', fontSize: '18px' }} onClick={(e) => { e.stopPropagation(); remove(ref(db, `members/${m.id}`)); }}>✕</button>
+                  <div style={{ marginBottom: '12px', fontWeight: 'bold', fontSize: '18px' }}>
+                    {m.name} {isMe && <span style={{fontSize:'12px', color:'#e9ce63'}}>★ 나</span>}
+                    <span style={{ fontSize: '12px', color: '#bbb', fontWeight: 'normal', marginLeft:'8px' }}>{calculatePercent(m.joinDate)}%</span>
+                  </div>
+                  <div style={{ width: '100%', height: '6px', background: '#eee', borderRadius: '3px', marginBottom: '20px', overflow: 'hidden' }}>
+                    <div style={{ width: `${calculatePercent(m.joinDate)}%`, height: '100%', background: '#73c088' }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button style={styles.statusBtn(m.status === '복귀', '#2ecc71', isMe)} onClick={() => handleStatusUpdate(m.id, '복귀')}>복귀</button>
+                    <button style={styles.statusBtn(m.status === '미복귀' || !m.status, '#e74c3c', isMe)} onClick={() => handleStatusUpdate(m.id, '미복귀')}>미복귀</button>
+                    <button style={styles.statusBtn(m.status === '잔류', '#3498db', isMe)} onClick={() => handleStatusUpdate(m.id, '잔류')}>잔류</button>
+                  </div>
                 </div>
-                <div style={{ width: '100%', height: '6px', background: '#eee', borderRadius: '3px', marginBottom: '20px', overflow: 'hidden' }}>
-                  <div style={{ width: `${calculatePercent(m.joinDate)}%`, height: '100%', background: '#73c088' }} />
-                </div>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button style={styles.statusBtn(m.status === '복귀', '#2ecc71')} onClick={() => handleStatusUpdate(m.id, '복귀')}>복귀</button>
-                  <button style={styles.statusBtn(m.status === '미복귀' || !m.status, '#e74c3c')} onClick={() => handleStatusUpdate(m.id, '미복귀')}>미복귀</button>
-                  <button style={styles.statusBtn(m.status === '잔류', '#3498db')} onClick={() => handleStatusUpdate(m.id, '잔류')}>잔류</button>
-                </div>
-              </div>
-          ))}
+              );
+          })}
+          
+          {myId && <div style={styles.footerLink} onClick={resetMe}>기기 등록 해제 (다른 이름으로 변경)</div>}
         </>
       ) : (
         <div style={{ padding: '20px' }}>
@@ -162,7 +187,7 @@ export default function App() {
             <Calendar onClickDay={setSelectedDate} value={selectedDate} formatDay={(l, d) => d.getDate()} />
           </div>
           <div style={{ marginTop: '20px', padding: '20px', textAlign: 'center', background: 'white', borderRadius: '15px', color: '#888' }}>
-            📅 {selectedDate.toLocaleDateString()} 상세 기능 준비중. 많은 피드백 환영.
+            📅 {selectedDate.toLocaleDateString()} 상세 일정 준비 중
           </div>
         </div>
       )}
