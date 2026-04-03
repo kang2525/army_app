@@ -40,7 +40,7 @@ export default function App() {
       const memberList = data ? Object.keys(data).map(key => ({ ...data[key], id: key })) : [];
       setMembers(memberList);
 
-      // [자동 수정 로직] 내 폰에 저장된 ID가 실제 DB에 없으면 로컬스토리지 초기화
+      // 내 폰에 저장된 ID가 실제 DB 목록에 없으면 자동으로 로그아웃(초기화) 처리
       const storedId = localStorage.getItem('katusa_my_id');
       if (storedId && !memberList.find(m => m.id === storedId)) {
         localStorage.removeItem('katusa_my_id');
@@ -76,16 +76,11 @@ export default function App() {
     stay: currentMembers.filter(m => m.status === '잔류').length
   };
 
-  // 인원 추가 (중복 방지 로직 포함)
   const addMember = () => {
     const trimmedName = newName.trim();
     if (!trimmedName) { alert("이름을 입력해 주세요."); return; }
-
     const isDuplicate = members.some(m => m.name === trimmedName);
-    if (isDuplicate) {
-      alert(`[${trimmedName}]님은 이미 등록되어 있습니다.`);
-      return;
-    }
+    if (isDuplicate) { alert(`[${trimmedName}]님은 이미 등록되어 있습니다.`); return; }
 
     const id = Date.now().toString();
     set(ref(db, `members/${id}`), { 
@@ -101,7 +96,7 @@ export default function App() {
     }
     if (member.isRegistered) { alert("이미 다른 기기에서 등록된 사람입니다."); return; }
     
-    if (window.confirm(`[${member.name}]님으로 등록 하시겠습니까?`)) {
+    if (window.confirm(`[${member.name}]님으로 이 기기를 등록 하시겠습니까?`)) {
       update(ref(db, `members/${member.id}`), { isRegistered: true });
       localStorage.setItem('katusa_my_id', member.id);
       setMyId(member.id);
@@ -109,7 +104,7 @@ export default function App() {
   };
 
   const unregisterDevice = (member) => {
-    if (window.confirm("등록을 해제하시겠습니까?")) {
+    if (window.confirm("기기 등록을 해제하시겠습니까?")) {
       update(ref(db, `members/${member.id}`), { isRegistered: false });
       localStorage.removeItem('katusa_my_id');
       setMyId(null);
@@ -117,7 +112,7 @@ export default function App() {
   };
 
   const handleStatusUpdate = (member, newStatus) => {
-    if (member.id !== myId && !isSeniorKatusa) { alert("대리 수정 금지."); return; }
+    if (member.id !== myId && !isSeniorKatusa) { alert("대리 수정은 금지되어 있습니다."); return; }
     update(ref(db, `members/${member.id}`), { status: newStatus });
     const now = new Date();
     push(ref(db, 'logs'), {
@@ -140,18 +135,7 @@ export default function App() {
       `}</style>
 
       {/* 헤더 섹션 */}
-      <div style={{ background: '#3b472e', padding: '20px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
-        
-        {/* 휴대폰용 강제 초기화 버튼 */}
-        <div style={{ textAlign: 'right', marginBottom: '10px' }}>
-          <button 
-            onClick={() => { if(window.confirm("기기 등록 정보를 모두 삭제하시겠습니까?")) { localStorage.clear(); window.location.reload(); } }} 
-            style={{ background: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', padding: '5px 10px', fontSize: '11px', fontWeight: 'bold' }}
-          >
-            기록 삭제
-          </button>
-        </div>
-
+      <div style={{ background: '#3b472e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
         <h2 style={{ margin: '0 0 15px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>Katusa Tracker</h2>
         
         {/* 인원 추가 폼 */}
@@ -235,8 +219,8 @@ export default function App() {
           {view === 'logs' ? (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h4 style={{ margin: 0, color: '#555' }}>활동 로그</h4>
-                {isSeniorKatusa && <button onClick={() => remove(ref(db, 'logs'))} style={{ color: '#ff4d4f', border: 'none', background: 'none', fontSize: '12px' }}>로그 초기화</button>}
+                <h4 style={{ margin: 0, color: '#555' }}>최근 로그</h4>
+                {isSeniorKatusa && <button onClick={() => remove(ref(db, 'logs'))} style={{ color: '#ff4d4f', border: 'none', background: 'none', fontSize: '12px' }}>전체 초기화</button>}
               </div>
               {logs.map(log => (
                 <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', borderRadius: '15px', marginBottom: '10px' }}>
