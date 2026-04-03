@@ -50,8 +50,8 @@ export default function App() {
 
   const registerMyDevice = (member) => {
     if (myId) { alert("이미 등록된 기기입니다."); return; }
-    if (member.isRegistered) { alert("이미 등록된 대원입니다."); return; }
-    if (window.confirm(`[${member.name}] 대원으로 등록하시겠습니까?`)) {
+    if (member.isRegistered) { alert("이미 등록된 사람입니다."); return; }
+    if (window.confirm(`[${member.name}] 신병인가? 힘내거라`)) {
       update(ref(db, `members/${member.id}`), { isRegistered: true });
       localStorage.setItem('katusa_my_id', member.id);
       setMyId(member.id);
@@ -67,7 +67,7 @@ export default function App() {
   };
 
   const deleteMember = (member) => {
-    if (window.confirm(`[${member.name}] 대원을 명단에서 영구 삭제하시겠습니까?`)) {
+    if (window.confirm(`[${member.name}] 전역했으니 영구 삭제해야지?`)) {
       remove(ref(db, `members/${member.id}`));
     }
   };
@@ -88,7 +88,7 @@ export default function App() {
   };
 
   const handleStatusUpdate = (member, newStatus) => {
-    if (member.id !== myId) { alert("본인 카드만 수정 가능합니다."); return; }
+    if (member.id !== myId) { alert("수정 불가."); return; }
     update(ref(db, `members/${member.id}`), { status: newStatus });
     const now = new Date();
     push(ref(db, 'logs'), {
