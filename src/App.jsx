@@ -47,7 +47,6 @@ export default function App() {
   const me = members.find(m => m.id === myId);
   const isSeniorKatusa = me?.name === "신준섭";
 
-  // 현재 탭의 인원 정보 계산
   const currentMembers = members
     .filter(m => m.unit === activeTab)
     .sort((a, b) => {
@@ -65,7 +64,7 @@ export default function App() {
   const registerMyDevice = (member) => {
     if (myId) { alert("이미 등록된 기기입니다."); return; }
     if (member.isRegistered) { alert("이미 등록된 사람입니다."); return; }
-    if (window.confirm(`[${member.name}] 등록할래말래`)) {
+    if (window.confirm(`[${member.name}] 대원으로 등록하시겠습니까?`)) {
       update(ref(db, `members/${member.id}`), { isRegistered: true });
       localStorage.setItem('katusa_my_id', member.id);
       setMyId(member.id);
@@ -80,8 +79,20 @@ export default function App() {
     }
   };
 
+  const resetAllStatus = () => {
+    if (!isSeniorKatusa) return;
+    if (window.confirm(`${activeTab} 인원 전원을 '미복귀'로 초기화할까요?`)) {
+      const updates = {};
+      currentMembers.forEach(m => {
+        updates[`/members/${m.id}/status`] = '미복귀';
+      });
+      update(ref(db), updates);
+      alert("초기화되었습니다.");
+    }
+  };
+
   const deleteMember = (member) => {
-    if (window.confirm(`[${member.name}] 전역했으니 영구 삭제해야지?`)) {
+    if (window.confirm(`[${member.name}] 대원을 영구 삭제하시겠습니까?`)) {
       remove(ref(db, `members/${member.id}`));
     }
   };
@@ -102,7 +113,7 @@ export default function App() {
   };
 
   const handleStatusUpdate = (member, newStatus) => {
-    if (member.id !== myId) { alert("수정 불가."); return; }
+    if (member.id !== myId) { alert("본인 상태만 수정 가능합니다."); return; }
     update(ref(db, `members/${member.id}`), { status: newStatus });
     const now = new Date();
     push(ref(db, 'logs'), {
@@ -125,6 +136,36 @@ export default function App() {
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '80px', fontFamily: 'sans-serif' }}>
       
+      {/* ⭐ 반짝임 효과용 CSS 전역 스타일 */}
+      <style>{`
+        @keyframes shine {
+          0% { left: -100%; }
+          50% { left: 100%; }
+          100% { left: 100%; }
+        }
+        .senior-badge {
+          position: relative;
+          background: #000;
+          color: #e9ce63;
+          font-size: 10px;
+          padding: 3px 8px;
+          border-radius: 4px;
+          font-weight: 900;
+          overflow: hidden;
+          box-shadow: 0 0 8px rgba(233, 206, 99, 0.4);
+          border: 1px solid #e9ce63;
+        }
+        .senior-badge::after {
+          content: "";
+          position: absolute;
+          top: 0; left: -100%;
+          width: 50%; height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+          transform: skewX(-20deg);
+          animation: shine 3s infinite;
+        }
+      `}</style>
+
       <div style={{ background: '#3b472e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
         <h2 style={{ margin: '0 0 10px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>Katusa Tracker</h2>
         
@@ -156,35 +197,21 @@ export default function App() {
             ))}
           </div>
 
-          {/* ⭐ 현황판 섹션 추가 */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(4, 1fr)', 
-            gap: '10px', 
-            margin: '0 15px 15px', 
-            background: 'white', 
-            padding: '20px', 
-            borderRadius: '25px',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
-            textAlign: 'center'
-          }}>
-            <div>
-              <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>총원</div>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b472e' }}>{stats.total}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>복귀</div>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#2ecc71' }}>{stats.returned}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>미복귀</div>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#e74c3c' }}>{stats.notReturned}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>잔류</div>
-              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3498db' }}>{stats.stay}</div>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', margin: '0 15px 15px', background: 'white', padding: '20px', borderRadius: '25px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+            <div><div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>총원</div><div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b472e' }}>{stats.total}</div></div>
+            <div><div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>복귀</div><div style={{ fontSize: '18px', fontWeight: 'bold', color: '#2ecc71' }}>{stats.returned}</div></div>
+            <div><div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>미복귀</div><div style={{ fontSize: '18px', fontWeight: 'bold', color: '#e74c3c' }}>{stats.notReturned}</div></div>
+            <div><div style={{ fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>잔류</div><div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3498db' }}>{stats.stay}</div></div>
           </div>
+
+          {/* ⭐ 시니어용 전체 초기화 버튼 */}
+          {isSeniorKatusa && (
+            <div style={{ padding: '0 15px 15px' }}>
+              <button onClick={resetAllStatus} style={{ width: '100%', padding: '12px', borderRadius: '15px', border: '1px solid #e74c3c', background: 'white', color: '#e74c3c', fontWeight: 'bold', fontSize: '13px' }}>
+                🔄 {activeTab} 전체 미복귀로 초기화
+              </button>
+            </div>
+          )}
 
           {currentMembers.map(m => {
               const isMe = m.id === myId;
@@ -199,21 +226,9 @@ export default function App() {
 
                   <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div onClick={() => registerMyDevice(m)} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: (!myId && !m.isRegistered) ? 'pointer' : 'default' }}>
-                      <span style={{ color: m.isRegistered ? '#333' : '#bbb', fontWeight: 'bold', fontSize: '19px', lineHeight: '1' }}>
-                        {m.name}
-                      </span>
+                      <span style={{ color: m.isRegistered ? '#333' : '#bbb', fontWeight: 'bold', fontSize: '19px', lineHeight: '1' }}>{m.name}</span>
                       {isTargetSenior && (
-                        <span style={{ 
-                          background: '#000', 
-                          color: '#e9ce63', 
-                          fontSize: '10px', 
-                          padding: '3px 6px', 
-                          borderRadius: '4px', 
-                          fontWeight: '900',
-                          lineHeight: '1',
-                          display: 'inline-flex',
-                          alignItems: 'center'
-                        }}>SENIOR</span>
+                        <span className="senior-badge">SENIOR</span>
                       )}
                       <span style={{ fontSize: '13px', color: '#ccc', lineHeight: '1' }}>{pct}%</span>
                     </div>
@@ -232,7 +247,7 @@ export default function App() {
                       <button key={status} style={{ 
                         flex: 1, padding: '15px 0', borderRadius: '12px', border: 'none', 
                         background: m.status === status ? (status === '복귀' ? '#2ecc71' : status === '잔류' ? '#3498db' : '#e74c3c') : '#f1f3f5', 
-                        color: m.status === status ? 'white' : '#adb5bd', fontWeight: 'bold', opacity: isMe ? 1 : 0.4 
+                        color: m.status === status ? 'white' : '#adb5bd', fontWeight: 'bold', opacity: (isMe || isSeniorKatusa) ? 1 : 0.4 
                       }} onClick={() => handleStatusUpdate(m, status)}>{status}</button>
                     ))}
                   </div>
