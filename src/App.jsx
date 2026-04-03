@@ -4,7 +4,7 @@ import 'react-calendar/dist/Calendar.css'
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, update, push, remove } from 'firebase/database';
 
-// 1. Firebase 설정 (제공해주신 설정값 유지)
+// 1. Firebase 설정
 const firebaseConfig = {
   apiKey: "AIzaSyBbqaA06Uq05IFDbWDOMeBOlRy2eqF0OR0E",
   authDomain: "armyapp-f95eb.firebaseapp.com",
@@ -31,18 +31,20 @@ export default function App() {
   const [newUnit, setNewUnit] = useState('HHC');
   const [newJoinDate, setNewJoinDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // 2. 데이터 실시간 동기화
   useEffect(() => {
     document.title = "Katusa Tracker";
 
-    const membersRef = ref(db, 'members');
-    onValue(membersRef, (snapshot) => {
+    // 멤버 데이터 동기화 및 유령 ID 체크
+    onValue(ref(db, 'members'), (snapshot) => {
       const data = snapshot.val();
-      // 데이터가 없을 때를 대비해 빈 배열 처리
-      if (data) {
-        setMembers(Object.keys(data).map(key => ({ ...data[key], id: key })));
-      } else {
-        setMembers([]);
+      const memberList = data ? Object.keys(data).map(key => ({ ...data[key], id: key })) : [];
+      setMembers(memberList);
+
+      // [자동 수정 로직] 내 폰에 저장된 ID가 실제 DB에 없으면 로컬스토리지 초기화
+      const storedId = localStorage.getItem('katusa_my_id');
+      if (storedId && !memberList.find(m => m.id === storedId)) {
+        localStorage.removeItem('katusa_my_id');
+        setMyId(null);
       }
     });
 
@@ -74,46 +76,32 @@ export default function App() {
     stay: currentMembers.filter(m => m.status === '잔류').length
   };
 
-  // 3. 인원 추가 함수 (중복 체크 포함)
+  // 인원 추가 (중복 방지 로직 포함)
   const addMember = () => {
     const trimmedName = newName.trim();
-    if (!trimmedName) {
-      alert("이름을 입력해 주세요.");
-      return;
-    }
+    if (!trimmedName) { alert("이름을 입력해 주세요."); return; }
 
-    // 데이터베이스에 동일한 이름이 있는지 확인
     const isDuplicate = members.some(m => m.name === trimmedName);
-
     if (isDuplicate) {
       alert(`[${trimmedName}]님은 이미 등록되어 있습니다.`);
-      return; // 중복이면 여기서 중단
+      return;
     }
 
     const id = Date.now().toString();
     set(ref(db, `members/${id}`), { 
-      id, 
-      name: trimmedName, 
-      unit: newUnit, 
-      joinDate: newJoinDate, 
-      status: '미복귀', 
-      isRegistered: false 
-    }).then(() => {
-      setNewName(''); // 성공 시 입력창 초기화
-    }).catch((err) => {
-      alert("등록 실패: " + err.message);
-    });
+      id, name: trimmedName, unit: newUnit, joinDate: newJoinDate, status: '미복귀', isRegistered: false 
+    }).then(() => setNewName(''));
   };
 
   const registerMyDevice = (member) => {
     if (myId) { 
       const currentMe = members.find(m => m.id === myId);
-      alert(`이미 [${currentMe?.name || '다른 사람'}]으로 등록된 기기입니다. '해제'를 먼저 해주세요.`);
+      alert(`이미 [${currentMe?.name || '다른 사람'}]으로 등록된 기기입니다.\n상단 '초기화' 버튼을 누르거나 '해제'를 먼저 해주세요.`);
       return; 
     }
     if (member.isRegistered) { alert("이미 다른 기기에서 등록된 사람입니다."); return; }
     
-    if (window.confirm(`[${member.name}] 등록 하시겠습니까?`)) {
+    if (window.confirm(`[${member.name}]님으로 등록 하시겠습니까?`)) {
       update(ref(db, `members/${member.id}`), { isRegistered: true });
       localStorage.setItem('katusa_my_id', member.id);
       setMyId(member.id);
@@ -126,32 +114,6 @@ export default function App() {
       localStorage.removeItem('katusa_my_id');
       setMyId(null);
     }
-  };
-
-  const resetAllStatus = () => {
-    if (!isSeniorKatusa) return;
-    if (window.confirm(`${activeTab} 인원 전원을 '미복귀'로 초기화하시겠습니까?`)) {
-      const updates = {};
-      currentMembers.forEach(m => {
-        updates[`/members/${m.id}/status`] = '미복귀';
-      });
-      update(ref(db), updates);
-    }
-  };
-
-  const deleteMember = (member) => {
-    if (window.confirm(`[${member.name}] 인원을 영구 삭제하시겠습니까?`)) {
-      remove(ref(db, `members/${member.id}`));
-    }
-  };
-
-  const calculatePercent = (joinDate) => {
-    if(!joinDate) return "0";
-    const start = new Date(joinDate);
-    const end = new Date(start);
-    end.setMonth(start.getMonth() + 18);
-    const p = ((new Date() - start) / (end - start)) * 100;
-    return Math.min(100, Math.max(0, p)).toFixed(1);
   };
 
   const handleStatusUpdate = (member, newStatus) => {
@@ -171,16 +133,28 @@ export default function App() {
       
       <style>{`
         @keyframes shine { 0% { left: -100%; } 50% { left: 100%; } 100% { left: 100%; } }
-        .senior-card { background: #1a1a1a !important; border: 2px solid #e9ce63 !important; box-shadow: 0 10px 20px rgba(0,0,0,0.3) !important; }
+        .senior-card { background: #1a1a1a !important; border: 2px solid #e9ce63 !important; }
         .senior-name { background: linear-gradient(to right, #bf953f, #fcf6ba, #b38728, #fbf5b7, #aa771c); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 900 !important; }
         .senior-badge { position: relative; background: #e9ce63; color: #000; font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 900; overflow: hidden; display: inline-flex; align-items: center; }
         .senior-badge::after { content: ""; position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); transform: skewX(-20deg); animation: shine 3s infinite; }
       `}</style>
 
       {/* 헤더 섹션 */}
-      <div style={{ background: '#3b472e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
-        <h2 style={{ margin: '0 0 10px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>Katusa Tracker</h2>
+      <div style={{ background: '#3b472e', padding: '20px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
         
+        {/* 휴대폰용 강제 초기화 버튼 */}
+        <div style={{ textAlign: 'right', marginBottom: '10px' }}>
+          <button 
+            onClick={() => { if(window.confirm("기기 등록 정보를 모두 삭제하시겠습니까?")) { localStorage.clear(); window.location.reload(); } }} 
+            style={{ background: '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', padding: '5px 10px', fontSize: '11px', fontWeight: 'bold' }}
+          >
+            기기 데이터 강제 초기화
+          </button>
+        </div>
+
+        <h2 style={{ margin: '0 0 15px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>Katusa Tracker</h2>
+        
+        {/* 인원 추가 폼 */}
         <div style={{ display: 'grid', gap: '10px', marginBottom: '20px', background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '15px' }}>
            <div style={{ display: 'flex', gap: '8px' }}>
               <select style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none' }} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
@@ -194,6 +168,7 @@ export default function App() {
            </div>
         </div>
         
+        {/* 탭 메뉴 */}
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.15)', borderRadius: '12px', overflow: 'hidden' }}>
           <button style={{ flex: 1, padding: '14px 0', border: 'none', background: view === 'main' ? '#e9ce63' : 'transparent', color: view === 'main' ? '#3b472e' : 'white', fontWeight: 'bold' }} onClick={() => setView('main')}>부대 관리</button>
           <button style={{ flex: 1, padding: '14px 0', border: 'none', background: view === 'logs' ? '#e9ce63' : 'transparent', color: view === 'logs' ? '#3b472e' : 'white', fontWeight: 'bold' }} onClick={() => setView('logs')}>로그 기록</button>
@@ -216,12 +191,6 @@ export default function App() {
             <div><div style={{ fontSize: '11px', color: '#aaa' }}>잔류</div><div style={{ fontSize: '17px', fontWeight: 'bold', color: '#3498db' }}>{stats.stay}</div></div>
           </div>
 
-          {isSeniorKatusa && (
-            <div style={{ padding: '0 15px 15px' }}>
-              <button onClick={resetAllStatus} style={{ width: '100%', padding: '12px', borderRadius: '15px', border: '1px solid #e74c3c', background: 'white', color: '#e74c3c', fontWeight: 'bold', fontSize: '13px' }}>🔄 {activeTab} 전체 미복귀로 초기화</button>
-            </div>
-          )}
-
           {currentMembers.map(m => {
               const isMe = m.id === myId;
               const isTargetSenior = m.name === "신준섭";
@@ -234,10 +203,10 @@ export default function App() {
                   border: isMe ? '2px solid #e9ce63' : 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', position: 'relative' 
                 }}>
                   {isSeniorKatusa && !isMe && (
-                    <button onClick={() => deleteMember(m)} style={{ position: 'absolute', top: '18px', right: '18px', border: 'none', background: 'none', color: isTargetSenior ? '#555' : '#ddd', fontSize: '18px' }}>✕</button>
+                    <button onClick={() => { if(window.confirm(`[${m.name}]님을 삭제하시겠습니까?`)) remove(ref(db, `members/${m.id}`)); }} style={{ position: 'absolute', top: '18px', right: '18px', border: 'none', background: 'none', color: isTargetSenior ? '#555' : '#ddd', fontSize: '18px' }}>✕</button>
                   )}
                   <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div onClick={() => registerMyDevice(m)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div onClick={() => registerMyDevice(m)} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                       <span className={isTargetSenior ? "senior-name" : ""} style={{ color: isTargetSenior ? "transparent" : (m.isRegistered ? '#333' : '#bbb'), fontWeight: 'bold', fontSize: '19px' }}>{m.name}</span>
                       {isTargetSenior && <span className="senior-badge">SENIOR</span>}
                       <span style={{ fontSize: '13px', color: isTargetSenior ? '#777' : '#ccc' }}>{pct}%</span>
@@ -272,7 +241,7 @@ export default function App() {
               {logs.map(log => (
                 <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', borderRadius: '15px', marginBottom: '10px' }}>
                   <div><div style={{ fontSize: '11px', color: '#aaa' }}>{log.dateString} {log.timeString}</div><b style={{ fontSize: '16px' }}>{log.name}</b></div>
-                  <div style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', color: 'white', background: log.status === '복귀' ? '#2ecc71' : log.status === '잔류' ? '#3498db' : log.status === '미복귀' ? '#e74c3c' : '#ccc' }}>{log.status}</div>
+                  <div style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', color: 'white', background: log.status === '복귀' ? '#2ecc71' : log.status === '잔류' ? '#3498db' : '#e74c3c' }}>{log.status}</div>
                 </div>
               ))}
             </div>
@@ -282,3 +251,12 @@ export default function App() {
     </div>
   );
 }
+
+const calculatePercent = (joinDate) => {
+  if(!joinDate) return "0";
+  const start = new Date(joinDate);
+  const end = new Date(start);
+  end.setMonth(start.getMonth() + 18);
+  const p = ((new Date() - start) / (end - start)) * 100;
+  return Math.min(100, Math.max(0, p)).toFixed(1);
+};
