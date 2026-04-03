@@ -44,24 +44,18 @@ export default function App() {
     });
   }, []);
 
-  // ⭐ 중복 체크가 포함된 기기 등록 함수
   const registerMyDevice = (member) => {
-    // 1. 이 기기에 이미 등록된 정보가 있는 경우
     if (myId) {
       alert("이 기기는 이미 등록되어 있습니다.");
       return;
     }
-
-    // 2. 선택한 대원이 이미 다른 기기에 등록된 경우
     if (member.isRegistered) {
       alert("해당 대원은 이미 다른 기기에 등록되어 있습니다.");
       return;
     }
 
-    if (window.confirm(`이 기기를 [${member.name}] 대원의 기기로 등록하시겠습니까?\n등록 후에는 변경이 어렵습니다.`)) {
-      // Firebase에 등록 상태 업데이트
+    if (window.confirm(`이 기기를 [${member.name}] 대원의 기기로 등록하시겠습니까?`)) {
       update(ref(db, `members/${member.id}`), { isRegistered: true });
-      // 로컬 스토리지 저장
       localStorage.setItem('katusa_my_id', member.id);
       setMyId(member.id);
       alert(`${member.name} 대원으로 등록되었습니다.`);
@@ -94,20 +88,26 @@ export default function App() {
 
   const addMember = () => {
     if (!newName) return;
-    // 이름 중복 방지 (선택 사항)
-    if (members.find(m => m.name === newName && m.unit === newUnit)) {
-      alert("이미 같은 부대에 동일한 이름의 대원이 있습니다.");
-      return;
-    }
     const id = Date.now().toString();
     set(ref(db, `members/${id}`), { 
       id, name: newName, unit: newUnit, joinDate: newJoinDate, 
-      status: '미복귀', isRegistered: false // 초기값은 등록 안됨
+      status: '미복귀', isRegistered: false 
     });
     setNewName('');
   };
 
-  const currentMembers = members.filter(m => m.unit === activeTab);
+  // ⭐ 정렬 로직: 1순위 입대일(joinDate), 2순위 이름(name)
+  const currentMembers = members
+    .filter(m => m.unit === activeTab)
+    .sort((a, b) => {
+      // 1. 입대일 비교
+      if (a.joinDate !== b.joinDate) {
+        return new Date(a.joinDate) - new Date(b.joinDate);
+      }
+      // 2. 입대일이 같으면 이름 가나다순 비교
+      return a.name.localeCompare(b.name, 'ko');
+    });
+
   const stats = {
     total: currentMembers.length,
     returned: currentMembers.filter(m => m.status === '복귀').length,
@@ -156,21 +156,19 @@ export default function App() {
             <div style={{textAlign:'center'}}><small style={{color:'#999'}}>잔류</small><br/><b style={{color:'#3498db'}}>{stats.stay}</b></div>
           </div>
 
-          {currentMembers.sort((a,b)=>new Date(a.joinDate)-new Date(b.joinDate)).map(m => {
+          {currentMembers.map(m => {
               const isMe = m.id === myId;
               const pct = calculatePercent(m.joinDate);
               
               return (
                 <div key={m.id} style={{ background: 'white', padding: '20px', borderRadius: '25px', margin: '0 15px 15px', border: isMe ? '2px solid #e9ce63' : 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
                   
-                  <div style={{ marginBottom: '15px', display: 'flex', justifyContent: 'space-between' }}>
+                  <div style={{ marginBottom: '15px' }}>
                     <div onClick={() => registerMyDevice(m)} style={{ cursor: (!myId && !m.isRegistered) ? 'pointer' : 'default' }}>
                       <span style={{ color: m.isRegistered ? '#333' : '#bbb', fontWeight: 'bold', fontSize: '19px' }}>
                         {m.name} {m.isRegistered && "📱"}
                       </span>
                       <span style={{ fontSize: '13px', color: '#ccc', marginLeft:'10px' }}>{pct}%</span>
-                      {!myId && !m.isRegistered && <span style={{ fontSize: '11px', color: '#e9ce63', display: 'block' }}>👆 클릭하여 내 기기로 등록</span>}
-                      {m.isRegistered && !isMe && <span style={{ fontSize: '11px', color: '#bbb', display: 'block' }}>이미 등록된 대원</span>}
                     </div>
                   </div>
 
