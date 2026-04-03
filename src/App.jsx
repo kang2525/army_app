@@ -74,7 +74,7 @@ export default function App() {
     }
     if (member.isRegistered) { alert("이미 다른 기기에서 등록된 사람입니다."); return; }
     
-    if (window.confirm(`[${member.name}] 사람 등록 할래말래`)) {
+    if (window.confirm(`[${member.name}] 등록 할래말래`)) {
       update(ref(db, `members/${member.id}`), { isRegistered: true });
       localStorage.setItem('katusa_my_id', member.id);
       setMyId(member.id);
