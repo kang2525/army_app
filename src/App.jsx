@@ -96,7 +96,7 @@ export default function App() {
   const registerMyDevice = (member) => {
     if (myId) { 
       const currentMe = members.find(m => m.id === myId);
-      alert(`이미 [${currentMe?.name || '다른 사람'}]으로 등록된 기기입니다.\n상단 '초기화' 버튼을 누르거나 '해제'를 먼저 해주세요.`);
+      alert(`이미 [${currentMe?.name || '다른 사람'}]으로 등록된 기기입니다.\n'해제'를 먼저 해주세요.`);
       return; 
     }
     if (member.isRegistered) { alert("이미 다른 기기에서 등록된 사람입니다."); return; }
@@ -117,7 +117,7 @@ export default function App() {
   };
 
   const handleStatusUpdate = (member, newStatus) => {
-    if (member.id !== myId && !isSeniorKatusa) { alert("본인 상태만 수정 가능합니다."); return; }
+    if (member.id !== myId && !isSeniorKatusa) { alert("대리 수정 금지."); return; }
     update(ref(db, `members/${member.id}`), { status: newStatus });
     const now = new Date();
     push(ref(db, 'logs'), {
