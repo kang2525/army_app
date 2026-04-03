@@ -47,10 +47,20 @@ export default function App() {
   const me = members.find(m => m.id === myId);
   const isSeniorKatusa = me?.name === "신준섭";
 
+  // ⭐ 시니어 > 짬순 > 가나다순 정렬 로직
   const currentMembers = members
     .filter(m => m.unit === activeTab)
     .sort((a, b) => {
-      if (a.joinDate !== b.joinDate) return new Date(a.joinDate) - new Date(b.joinDate);
+      // 1. 시니어(신준섭) 우선순위
+      if (a.name === "신준섭") return -1;
+      if (b.name === "신준섭") return 1;
+
+      // 2. 짬순 (입대일 빠른 순)
+      if (a.joinDate !== b.joinDate) {
+        return new Date(a.joinDate) - new Date(b.joinDate);
+      }
+
+      // 3. 가나다순
       return a.name.localeCompare(b.name, 'ko');
     });
 
@@ -121,7 +131,7 @@ export default function App() {
   };
 
   const handleStatusUpdate = (member, newStatus) => {
-    // 시니어거나 본인이거나 둘 중 하나면 수정 가능하게 변경 (편의성)
+    // ⭐ 시니어이거나 본인이면 수정 가능
     if (member.id !== myId && !isSeniorKatusa) { alert("본인 상태만 수정 가능합니다."); return; }
     
     update(ref(db, `members/${member.id}`), { status: newStatus });
@@ -234,6 +244,9 @@ export default function App() {
               const isMe = m.id === myId;
               const isTargetSenior = m.name === "신준섭";
               const pct = calculatePercent(m.joinDate);
+              // ⭐ 시니어는 본인이 아니어도 버튼 활성화되도록 설정
+              const canEdit = isMe || isSeniorKatusa;
+
               return (
                 <div key={m.id} style={{ background: 'white', padding: '20px', borderRadius: '25px', margin: '0 15px 15px', border: isMe ? '2px solid #e9ce63' : 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', position: 'relative' }}>
                   
@@ -262,7 +275,8 @@ export default function App() {
                       <button key={status} style={{ 
                         flex: 1, padding: '15px 0', borderRadius: '12px', border: 'none', 
                         background: m.status === status ? (status === '복귀' ? '#2ecc71' : status === '잔류' ? '#3498db' : '#e74c3c') : '#f1f3f5', 
-                        color: m.status === status ? 'white' : '#adb5bd', fontWeight: 'bold', opacity: (isMe || isSeniorKatusa) ? 1 : 0.4 
+                        color: m.status === status ? 'white' : '#adb5bd', fontWeight: 'bold', 
+                        opacity: canEdit ? 1 : 0.4 
                       }} onClick={() => handleStatusUpdate(m, status)}>{status}</button>
                     ))}
                   </div>
