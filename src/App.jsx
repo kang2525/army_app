@@ -91,7 +91,7 @@ export default function App() {
 
   const resetAllStatus = () => {
     if (!isSeniorKatusa) return;
-    if (window.confirm(`${activeTab} 부대원 전원을 '미복귀'로 초기화하시겠습니까?`)) {
+    if (window.confirm(`${activeTab} 본중 전체 미복귀로 변경 딸깍 기능`)) {
       const updates = {};
       currentMembers.forEach(m => {
         updates[`/members/${m.id}/status`] = '미복귀';
@@ -105,12 +105,12 @@ export default function App() {
         dateString: now.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }),
         timestamp: now.getTime()
       });
-      alert("전원 미복귀로 초기화되었습니다.");
+      alert("전원 미복귀로 처리 완료했습니다 주인님");
     }
   };
 
   const deleteMember = (member) => {
-    if (window.confirm(`[${member.name}] 대원을 영구 삭제하시겠습니까?`)) {
+    if (window.confirm(`[${member.name}] 전역했으니깐 이제 내보낼려고?`)) {
       remove(ref(db, `members/${member.id}`));
     }
   };
