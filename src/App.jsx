@@ -22,8 +22,6 @@ export default function App() {
   const [view, setView] = useState('main'); 
   const [activeTab, setActiveTab] = useState('HHC');
   const [selectedDate, setSelectedDate] = useState(new Date());
-  
-  // 기기 등록 관련 상태 (로컬 스토리지에서 내 ID 가져오기)
   const [myId, setMyId] = useState(localStorage.getItem('katusa_my_id') || null);
 
   const [newName, setNewName] = useState('');
@@ -38,31 +36,44 @@ export default function App() {
     });
   }, []);
 
-  // 기기 등록 함수
-  const registerMe = (id, name) => {
-    if (window.confirm(`'${name}' 대원으로 이 기기를 등록하시겠습니까?\n등록 후에는 본인의 상태만 변경 가능합니다.`)) {
-      localStorage.setItem('katusa_my_id', id);
-      setMyId(id);
+  // 기기 등록 함수 (중복 체크 포함)
+  const registerMe = (member) => {
+    if (myId) return; // 이미 내가 등록된 상태면 중단
+
+    if (member.isRegistered) {
+      alert("이미 다른 기기에 등록된 대원입니다.");
+      return;
+    }
+
+    if (window.confirm(`'${member.name}' 대원으로 이 기기를 등록하시겠습니까?\n등록 후에는 다른 기기에서 이 이름을 사용할 수 없습니다.`)) {
+      // 1. DB에 등록 상태 저장
+      update(ref(db, `members/${member.id}`), { isRegistered: true });
+      // 2. 내 로컬 스토리지에 저장
+      localStorage.setItem('katusa_my_id', member.id);
+      setMyId(member.id);
     }
   };
 
-  // 등록 해제 (실수했을 경우 대비)
+  // 등록 해제
   const resetMe = () => {
-    if (window.confirm("기기 등록을 해제하시겠습니까?")) {
+    if (window.confirm("기기 등록을 해제하시겠습니까? (다른 사람도 이 이름을 등록할 수 있게 됩니다.)")) {
+      // 1. DB 상태 복구
+      update(ref(db, `members/${myId}`), { isRegistered: false });
+      // 2. 로컬 비우기
       localStorage.removeItem('katusa_my_id');
       setMyId(null);
     }
   };
 
   const handleStatusUpdate = (id, newStatus) => {
-    if (id !== myId) return; // 내 ID가 아니면 실행 안함
+    if (id !== myId) return;
     update(ref(db, `members/${id}`), { status: newStatus });
   };
   
   const addMember = () => {
     if (!newName) return;
     const id = Date.now().toString();
-    set(ref(db, `members/${id}`), { id, name: newName, unit: newUnit, joinDate: newJoinDate, status: '미복귀' });
+    set(ref(db, `members/${id}`), { id, name: newName, unit: newUnit, joinDate: newJoinDate, status: '미복귀', isRegistered: false });
     setNewName('');
   };
 
@@ -94,25 +105,25 @@ export default function App() {
       flex: 1, padding: '14px', border: 'none', background: active ? '#e9ce63' : 'transparent', color: active ? '#2d391e' : 'rgba(255,255,255,0.6)', fontWeight: 'bold', fontSize: '15px'
     }),
     statsBar: { display: 'flex', justifyContent: 'space-around', background: 'white', margin: '15px', padding: '15px', borderRadius: '15px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' },
-    card: (isMe) => ({ 
+    card: (isMe, isOtherReg) => ({ 
       background: 'white', padding: '18px', borderRadius: '20px', margin: '12px 15px', 
       boxShadow: isMe ? '0 0 15px rgba(233, 206, 99, 0.4)' : '0 2px 5px rgba(0,0,0,0.02)', 
       position: 'relative', border: isMe ? '2px solid #e9ce63' : '2px solid transparent',
-      opacity: (myId && !isMe) ? 0.6 : 1 // 내 이름이 등록됐는데 남의 카드면 흐리게
+      opacity: (myId && !isMe) || (isOtherReg && !isMe) ? 0.5 : 1, // 내꺼 아니거나 이미 임자 있으면 흐리게
+      cursor: (!myId && !isOtherReg) ? 'pointer' : 'default'
     }),
     statusBtn: (active, color, isMe) => ({ 
       flex: 1, padding: '14px 0', borderRadius: '10px', border: 'none', 
       background: active ? color : '#f1f3f5', color: active ? 'white' : '#777', 
       fontWeight: 'bold', cursor: isMe ? 'pointer' : 'default'
     }),
-    footerLink: { textAlign: 'center', fontSize: '12px', color: '#bbb', marginTop: '20px', cursor: 'pointer' }
+    badge: { fontSize: '11px', padding: '3px 8px', borderRadius: '8px', marginLeft: '8px', fontWeight: 'bold' }
   };
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
         <h2 style={styles.title}>Katusa Tracker</h2>
-        
         {view === 'main' && (
           <div style={{ display: 'grid', gap: '10px' }}>
              <div style={{ display: 'flex', gap: '8px' }}>
@@ -127,7 +138,6 @@ export default function App() {
              </div>
           </div>
         )}
-
         <div style={styles.navTabContainer}>
           <button style={styles.navTab(view === 'main')} onClick={() => setView('main')}>부대 관리</button>
           <button style={styles.navTab(view === 'calendar')} onClick={() => setView('calendar')}>휴가 일정</button>
@@ -141,7 +151,6 @@ export default function App() {
               <button key={u} style={{ padding: '8px 18px', borderRadius: '20px', border: 'none', background: activeTab === u ? '#2d391e' : '#fff', color: activeTab === u ? '#e9ce63' : '#555', fontWeight: 'bold', whiteSpace: 'nowrap', fontSize: '13px' }} onClick={() => setActiveTab(u)}>{u}</button>
             ))}
           </div>
-
           <div style={styles.statsBar}>
             <div style={{textAlign:'center'}}><small style={{color:'#999'}}>총원</small><br/><b>{stats.total}</b></div>
             <div style={{textAlign:'center'}}><small style={{color:'#999'}}>복귀</small><br/><b style={{color:'#2ecc71'}}>{stats.returned}</b></div>
@@ -149,7 +158,7 @@ export default function App() {
             <div style={{textAlign:'center'}}><small style={{color:'#999'}}>잔류</small><br/><b style={{color:'#3498db'}}>{stats.stay}</b></div>
           </div>
 
-          {!myId && <div style={{textAlign:'center', color:'#e74c3c', fontSize:'13px', margin:'10px 0'}}>⚠️ 본인의 이름을 클릭하여 기기를 등록하세요.</div>}
+          {!myId && <div style={{textAlign:'center', color:'#e74c3c', fontSize:'13px', margin:'10px 0'}}>⚠️ 본인 이름을 눌러 기기를 등록하세요 (중복 불가)</div>}
 
           {currentMembers
             .sort((a, b) => {
@@ -160,11 +169,14 @@ export default function App() {
             })
             .map(m => {
               const isMe = m.id === myId;
+              const isOtherReg = m.isRegistered && !isMe;
               return (
-                <div key={m.id} style={styles.card(isMe)} onClick={() => !myId && registerMe(m.id, m.name)}>
+                <div key={m.id} style={styles.card(isMe, isOtherReg)} onClick={() => registerMe(m)}>
                   <button style={{ position:'absolute', top:'18px', right:'18px', border:'none', background:'none', color:'#ddd', fontSize: '18px' }} onClick={(e) => { e.stopPropagation(); remove(ref(db, `members/${m.id}`)); }}>✕</button>
                   <div style={{ marginBottom: '12px', fontWeight: 'bold', fontSize: '18px' }}>
-                    {m.name} {isMe && <span style={{fontSize:'12px', color:'#e9ce63'}}>★ 나</span>}
+                    {m.name} 
+                    {isMe && <span style={{...styles.badge, background:'#e9ce63', color:'#2d391e'}}>내 기기</span>}
+                    {isOtherReg && <span style={{...styles.badge, background:'#eee', color:'#bbb'}}>등록됨</span>}
                     <span style={{ fontSize: '12px', color: '#bbb', fontWeight: 'normal', marginLeft:'8px' }}>{calculatePercent(m.joinDate)}%</span>
                   </div>
                   <div style={{ width: '100%', height: '6px', background: '#eee', borderRadius: '3px', marginBottom: '20px', overflow: 'hidden' }}>
@@ -178,16 +190,12 @@ export default function App() {
                 </div>
               );
           })}
-          
-          {myId && <div style={styles.footerLink} onClick={resetMe}>기기 등록 해제 (다른 이름으로 변경)</div>}
+          {myId && <div style={{textAlign:'center', fontSize:'12px', color:'#bbb', marginTop:'20px', cursor:'pointer'}} onClick={resetMe}>등록 해제 (기기 변경 시)</div>}
         </>
       ) : (
         <div style={{ padding: '20px' }}>
           <div style={{ background: 'white', borderRadius: '25px', padding: '15px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}>
             <Calendar onClickDay={setSelectedDate} value={selectedDate} formatDay={(l, d) => d.getDate()} />
-          </div>
-          <div style={{ marginTop: '20px', padding: '20px', textAlign: 'center', background: 'white', borderRadius: '15px', color: '#888' }}>
-            📅 {selectedDate.toLocaleDateString()} 상세 일정 준비 중
           </div>
         </div>
       )}
