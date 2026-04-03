@@ -47,7 +47,6 @@ export default function App() {
   const me = members.find(m => m.id === myId);
   const isSeniorKatusa = me?.name === "신준섭";
 
-  // 정렬: 시니어 > 짬순 > 가나다
   const currentMembers = members
     .filter(m => m.unit === activeTab)
     .sort((a, b) => {
@@ -64,16 +63,15 @@ export default function App() {
     stay: currentMembers.filter(m => m.status === '잔류').length
   };
 
-  // 기기 등록 로직 (상세 알림 추가)
   const registerMyDevice = (member) => {
     if (myId) { 
       const currentMe = members.find(m => m.id === myId);
-      alert(`이미 [${currentMe?.name || '다른 대원'}]으로 등록된 기기입니다. 상단의 초기화 버튼을 누르거나 '해제'를 먼저 해주세요.`);
+      alert(`이미 [${currentMe?.name || '다른 사람'}]으로 등록된 기기입니다. 상단의 초기화 버튼을 누르거나 '해제'를 먼저 해주세요.`);
       return; 
     }
-    if (member.isRegistered) { alert("이미 다른 기기에서 등록된 대원입니다."); return; }
+    if (member.isRegistered) { alert("이미 다른 기기에서 등록된 사람입니다."); return; }
     
-    if (window.confirm(`[${member.name}] 대원으로 이 기기를 등록하시겠습니까?`)) {
+    if (window.confirm(`[${member.name}] 사람 등록 할래말래`)) {
       update(ref(db, `members/${member.id}`), { isRegistered: true });
       localStorage.setItem('katusa_my_id', member.id);
       setMyId(member.id);
@@ -90,7 +88,7 @@ export default function App() {
 
   const resetAllStatus = () => {
     if (!isSeniorKatusa) return;
-    if (window.confirm(`${activeTab} 부대원 전원을 '미복귀'로 초기화하시겠습니까?`)) {
+    if (window.confirm(`${activeTab} 인원 전원을 '미복귀'로 초기화하시겠습니까?`)) {
       const updates = {};
       currentMembers.forEach(m => {
         updates[`/members/${m.id}/status`] = '미복귀';
@@ -101,7 +99,7 @@ export default function App() {
   };
 
   const deleteMember = (member) => {
-    if (window.confirm(`[${member.name}] 대원을 영구 삭제하시겠습니까?`)) {
+    if (window.confirm(`[${member.name}] 사람을 영구 삭제하시겠습니까?`)) {
       remove(ref(db, `members/${member.id}`));
     }
   };
@@ -136,7 +134,6 @@ export default function App() {
     setNewName('');
   };
 
-  // 강제 초기화 함수 (삼성폰 에러 해결용)
   const forceResetStorage = () => {
     localStorage.removeItem('katusa_my_id');
     setMyId(null);
@@ -147,7 +144,6 @@ export default function App() {
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '80px', fontFamily: 'sans-serif' }}>
       
-      {/* 폰에서 등록 오류 발생 시 누르는 임시 버튼 */}
       <div style={{ padding: '10px', background: '#eee', textAlign: 'center' }}>
         <button onClick={forceResetStorage} style={{ background: '#ff4d4f', color: 'white', border: 'none', padding: '5px 15px', borderRadius: '5px', fontSize: '12px', fontWeight: 'bold' }}>
           ⚠️ 등록 오류 시 클릭 (초기화)
