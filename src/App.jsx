@@ -47,6 +47,7 @@ export default function App() {
   const me = members.find(m => m.id === myId);
   const isSeniorKatusa = me?.name === "신준섭";
 
+  // 정렬: 시니어 > 짬순 > 가나다
   const currentMembers = members
     .filter(m => m.unit === activeTab)
     .sort((a, b) => {
@@ -63,10 +64,16 @@ export default function App() {
     stay: currentMembers.filter(m => m.status === '잔류').length
   };
 
+  // 기기 등록 로직 (상세 알림 추가)
   const registerMyDevice = (member) => {
-    if (myId) { alert("이미 등록된 기기입니다."); return; }
-    if (member.isRegistered) { alert("이미 등록된 사람입니다."); return; }
-    if (window.confirm(`[${member.name}] 이 기기로 할래말래`)) {
+    if (myId) { 
+      const currentMe = members.find(m => m.id === myId);
+      alert(`이미 [${currentMe?.name || '다른 대원'}]으로 등록된 기기입니다. 상단의 초기화 버튼을 누르거나 '해제'를 먼저 해주세요.`);
+      return; 
+    }
+    if (member.isRegistered) { alert("이미 다른 기기에서 등록된 대원입니다."); return; }
+    
+    if (window.confirm(`[${member.name}] 대원으로 이 기기를 등록하시겠습니까?`)) {
       update(ref(db, `members/${member.id}`), { isRegistered: true });
       localStorage.setItem('katusa_my_id', member.id);
       setMyId(member.id);
@@ -129,9 +136,24 @@ export default function App() {
     setNewName('');
   };
 
+  // 강제 초기화 함수 (삼성폰 에러 해결용)
+  const forceResetStorage = () => {
+    localStorage.removeItem('katusa_my_id');
+    setMyId(null);
+    alert("기기 정보가 초기화되었습니다. 이제 본인 이름을 눌러 등록하세요!");
+    window.location.reload();
+  };
+
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', minHeight: '100vh', background: '#f8f9fa', paddingBottom: '80px', fontFamily: 'sans-serif' }}>
       
+      {/* 폰에서 등록 오류 발생 시 누르는 임시 버튼 */}
+      <div style={{ padding: '10px', background: '#eee', textAlign: 'center' }}>
+        <button onClick={forceResetStorage} style={{ background: '#ff4d4f', color: 'white', border: 'none', padding: '5px 15px', borderRadius: '5px', fontSize: '12px', fontWeight: 'bold' }}>
+          ⚠️ 등록 오류 시 클릭 (초기화)
+        </button>
+      </div>
+
       <style>{`
         @keyframes shine {
           0% { left: -100%; }
@@ -139,7 +161,7 @@ export default function App() {
           100% { left: 100%; }
         }
         .senior-card {
-          background: #1a1a1a !important; /* 시니어 전용 블랙 배경 */
+          background: #1a1a1a !important;
           border: 2px solid #e9ce63 !important;
           box-shadow: 0 10px 20px rgba(0,0,0,0.3) !important;
         }
@@ -174,7 +196,7 @@ export default function App() {
 
       <div style={{ background: '#3b472e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
         <h2 style={{ margin: '0 0 10px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>Katusa Tracker</h2>
-        {/* 입력 섹션 동일 */}
+        
         <div style={{ display: 'grid', gap: '10px', marginBottom: '20px', background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '15px' }}>
            <div style={{ display: 'flex', gap: '8px' }}>
               <select style={{ flex: 1, padding: '12px', borderRadius: '10px', border: 'none' }} value={newUnit} onChange={e => setNewUnit(e.target.value)}>
@@ -187,6 +209,7 @@ export default function App() {
               <button style={{ flex: 1, background: '#e9ce63', border: 'none', borderRadius: '10px', fontWeight: 'bold', color: '#3b472e' }} onClick={addMember}>추가</button>
            </div>
         </div>
+        
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.15)', borderRadius: '12px', overflow: 'hidden' }}>
           <button style={{ flex: 1, padding: '14px 0', border: 'none', background: view === 'main' ? '#e9ce63' : 'transparent', color: view === 'main' ? '#3b472e' : 'white', fontWeight: 'bold' }} onClick={() => setView('main')}>부대 관리</button>
           <button style={{ flex: 1, padding: '14px 0', border: 'none', background: view === 'logs' ? '#e9ce63' : 'transparent', color: view === 'logs' ? '#3b472e' : 'white', fontWeight: 'bold' }} onClick={() => setView('logs')}>로그 기록</button>
@@ -196,7 +219,6 @@ export default function App() {
 
       {view === 'main' ? (
         <>
-          {/* 탭 버튼 및 현황판 동일 */}
           <div style={{ display: 'flex', gap: '10px', padding: '15px 20px', justifyContent: 'center' }}>
             {['HHC', 'Alpha', 'Bravo', 'Charlie'].map(u => (
               <button key={u} style={{ padding: '8px 20px', borderRadius: '20px', border: 'none', background: activeTab === u ? '#3b472e' : '#fff', color: activeTab === u ? '#e9ce63' : '#777', fontWeight: 'bold', fontSize: '13px' }} onClick={() => setActiveTab(u)}>{u}</button>
@@ -244,7 +266,6 @@ export default function App() {
                     {isMe && <button onClick={() => unregisterDevice(m)} style={{ background: isTargetSenior ? '#333' : '#fff1f0', color: '#ff4d4f', border: isTargetSenior ? '1px solid #ff4d4f' : '1px solid #ffa39e', borderRadius: '6px', padding: '4px 8px', fontSize: '11px', fontWeight: 'bold' }}>해제</button>}
                   </div>
 
-                  {/* 진행 바 */}
                   <div style={{ width: '100%', height: '7px', background: isTargetSenior ? '#333' : '#f1f3f5', borderRadius: '4px', marginBottom: '22px', overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: isTargetSenior ? 'linear-gradient(90deg, #bf953f, #e9ce63)' : '#73c088' }} />
                   </div>
@@ -265,7 +286,6 @@ export default function App() {
         </>
       ) : (
         <div style={{ padding: '20px' }}>
-          {/* 로그 및 캘린더 동일 */}
           {view === 'logs' ? (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
