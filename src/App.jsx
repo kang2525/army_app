@@ -1,6 +1,4 @@
 import { useState, useEffect } from 'react'
-import Calendar from 'react-calendar'
-import 'react-calendar/dist/Calendar.css'
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set, update, push, remove } from 'firebase/database';
 
@@ -23,7 +21,6 @@ export default function App() {
   const [logs, setLogs] = useState([]); 
   const [view, setView] = useState('main'); 
   const [activeTab, setActiveTab] = useState('HHC');
-  const [selectedDate, setSelectedDate] = useState(new Date());
   
   const [myId, setMyId] = useState(localStorage.getItem('katusa_my_id'));
 
@@ -40,7 +37,6 @@ export default function App() {
       const memberList = data ? Object.keys(data).map(key => ({ ...data[key], id: key })) : [];
       setMembers(memberList);
 
-      // 내 폰에 저장된 ID가 실제 DB 목록에 없으면 자동으로 로그아웃(초기화) 처리
       const storedId = localStorage.getItem('katusa_my_id');
       if (storedId && !memberList.find(m => m.id === storedId)) {
         localStorage.removeItem('katusa_my_id');
@@ -152,11 +148,10 @@ export default function App() {
            </div>
         </div>
         
-        {/* 탭 메뉴 */}
+        {/* 탭 메뉴 (캘린더 제거) */}
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.15)', borderRadius: '12px', overflow: 'hidden' }}>
           <button style={{ flex: 1, padding: '14px 0', border: 'none', background: view === 'main' ? '#e9ce63' : 'transparent', color: view === 'main' ? '#3b472e' : 'white', fontWeight: 'bold' }} onClick={() => setView('main')}>부대 관리</button>
           <button style={{ flex: 1, padding: '14px 0', border: 'none', background: view === 'logs' ? '#e9ce63' : 'transparent', color: view === 'logs' ? '#3b472e' : 'white', fontWeight: 'bold' }} onClick={() => setView('logs')}>로그 기록</button>
-          <button style={{ flex: 1, padding: '14px 0', border: 'none', background: view === 'calendar' ? '#e9ce63' : 'transparent', color: view === 'calendar' ? '#3b472e' : 'white', fontWeight: 'bold' }} onClick={() => setView('calendar')}>휴가 일정</button>
         </div>
       </div>
 
@@ -216,20 +211,18 @@ export default function App() {
         </>
       ) : (
         <div style={{ padding: '20px' }}>
-          {view === 'logs' ? (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                <h4 style={{ margin: 0, color: '#555' }}>최근 로그</h4>
-                {isSeniorKatusa && <button onClick={() => remove(ref(db, 'logs'))} style={{ color: '#ff4d4f', border: 'none', background: 'none', fontSize: '12px' }}>전체 초기화</button>}
-              </div>
-              {logs.map(log => (
-                <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', borderRadius: '15px', marginBottom: '10px' }}>
-                  <div><div style={{ fontSize: '11px', color: '#aaa' }}>{log.dateString} {log.timeString}</div><b style={{ fontSize: '16px' }}>{log.name}</b></div>
-                  <div style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', color: 'white', background: log.status === '복귀' ? '#2ecc71' : log.status === '잔류' ? '#3498db' : '#e74c3c' }}>{log.status}</div>
-                </div>
-              ))}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+              <h4 style={{ margin: 0, color: '#555' }}>최근 로그</h4>
+              {isSeniorKatusa && <button onClick={() => remove(ref(db, 'logs'))} style={{ color: '#ff4d4f', border: 'none', background: 'none', fontSize: '12px' }}>전체 초기화</button>}
             </div>
-          ) : <Calendar onClickDay={setSelectedDate} value={selectedDate} />}
+            {logs.map(log => (
+              <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', borderRadius: '15px', marginBottom: '10px' }}>
+                <div><div style={{ fontSize: '11px', color: '#aaa' }}>{log.dateString} {log.timeString}</div><b style={{ fontSize: '16px' }}>{log.name}</b></div>
+                <div style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', color: 'white', background: log.status === '복귀' ? '#2ecc71' : log.status === '잔류' ? '#3498db' : '#e74c3c' }}>{log.status}</div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
