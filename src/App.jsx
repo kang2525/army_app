@@ -30,8 +30,12 @@ export default function App() {
   const [newJoinDate, setNewJoinDate] = useState(new Date().toISOString().split('T')[0]);
   
   const [outReason, setOutReason] = useState(''); 
-  const [editingId, setEditingId] = useState(null); // 수정 중인 항목 ID
-  const [editValue, setEditValue] = useState(''); // 수정 중인 텍스트
+  const [editingId, setEditingId] = useState(null); 
+  const [editValue, setEditValue] = useState('');
+
+  // 실시간 날짜 문자열 생성 (예: 2026년 4월 6일)
+  const today = new Date();
+  const dateTitle = `${today.getFullYear()}년 ${today.getMonth() + 1}월 ${today.getDate()}일`;
 
   useEffect(() => {
     document.title = "Katusa Tracker";
@@ -81,7 +85,6 @@ export default function App() {
       return a.name.localeCompare(b.name, 'ko');
     });
 
-  // 사유 제출 (새로 등록)
   const submitReason = () => {
     if (!myId) { alert("기기 등록을 먼저 해주세요."); return; }
     if (!outReason.trim()) { alert("사유를 입력해주세요."); return; }
@@ -99,7 +102,6 @@ export default function App() {
     });
   };
 
-  // 사유 수정 저장
   const saveEdit = (id) => {
     if (!editValue.trim()) return;
     update(ref(db, `reasons/${id}`), { text: editValue }).then(() => {
@@ -108,7 +110,6 @@ export default function App() {
     });
   };
 
-  // 사유 삭제
   const deleteReason = (id) => {
     if (window.confirm("보고된 외출 사유를 삭제하시겠습니까?")) {
       remove(ref(db, `reasons/${id}`));
@@ -216,9 +217,9 @@ export default function App() {
             )}
           </div>
 
-          <h4 style={{ margin: '0 0 15px 10px', color: '#777' }}>오늘의 외출 신청 목록</h4>
+          <h4 style={{ margin: '0 0 15px 10px', color: '#777' }}>{dateTitle} 외출 신청 목록</h4>
           {Object.keys(reasons).length > 0 ? Object.keys(reasons).map(id => {
-            const isMyPost = id === myId; // 내 글인지 확인
+            const isMyPost = id === myId; 
             const isEditing = editingId === id;
 
             return (
@@ -228,7 +229,6 @@ export default function App() {
                     <span style={{ fontWeight: 'bold', fontSize: '17px', color: '#333' }}>{reasons[id].name}</span>
                     <span style={{ fontSize: '11px', color: '#bbb', marginLeft: '8px' }}>{reasons[id].time}</span>
                   </div>
-                  {/* 내 글일 때만 수정/삭제 버튼 노출 */}
                   {isMyPost && !isEditing && (
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button onClick={() => { setEditingId(id); setEditValue(reasons[id].text); }} style={{ border: 'none', background: 'none', color: '#3498db', fontSize: '12px', cursor: 'pointer' }}>수정</button>
