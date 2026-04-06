@@ -98,7 +98,7 @@ export default function App() {
       timestamp: now.getTime()
     }).then(() => {
       setOutReason('');
-      alert("보고되었습니다.");
+      alert("작성되었습니다.");
     });
   };
 
