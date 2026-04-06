@@ -91,7 +91,7 @@ export default function App() {
       timestamp: now.getTime()
     }).then(() => {
       setOutReason('');
-      alert("외출 보고가 완료되었습니다.");
+      alert("보고되었습니다.");
     });
   };
 
@@ -108,7 +108,7 @@ export default function App() {
       <div style={{ background: '#3b472e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
         <h2 style={{ margin: '0 0 20px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>Katusa Tracker</h2>
         
-        {/* 탭 메뉴 (3개로 확장) */}
+        {/* 탭 메뉴 */}
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.15)', borderRadius: '12px', overflow: 'hidden' }}>
           <button style={{ flex: 1, padding: '14px 0', border: 'none', background: view === 'main' ? '#e9ce63' : 'transparent', color: view === 'main' ? '#3b472e' : 'white', fontWeight: 'bold', fontSize: '13px' }} onClick={() => setView('main')}>부대 관리</button>
           <button style={{ flex: 1, padding: '14px 0', border: 'none', background: view === 'report' ? '#e9ce63' : 'transparent', color: view === 'report' ? '#3b472e' : 'white', fontWeight: 'bold', fontSize: '13px' }} onClick={() => setView('report')}>외출 보고</button>
@@ -118,7 +118,7 @@ export default function App() {
 
       {view === 'main' && (
         <>
-          {/* 인원 추가 폼 - 부대 관리 탭에서만 노출 */}
+          {/* 인원 추가 폼 */}
           <div style={{ padding: '20px 15px 0' }}>
             <div style={{ display: 'grid', gap: '8px', background: 'white', padding: '15px', borderRadius: '20px', boxShadow: '0 4px 10px rgba(0,0,0,0.03)' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -131,7 +131,7 @@ export default function App() {
                 <input style={{ flex: 3, padding: '10px', borderRadius: '8px', border: '1px solid #eee' }} placeholder="이름 입력" value={newName} onChange={e => setNewName(e.target.value)} />
                 <button style={{ flex: 1, background: '#3b472e', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold' }} onClick={() => {
                   const trimmedName = newName.trim();
-                  if (!trimmedName) { alert("이름을 입력해 주세요."); return; }
+                  if (!trimmedName) return;
                   const id = Date.now().toString();
                   set(ref(db, `members/${id}`), { id, name: trimmedName, unit: newUnit, joinDate: newJoinDate, status: '미복귀', isRegistered: false }).then(() => setNewName(''));
                 }}>추가</button>
@@ -171,7 +171,7 @@ export default function App() {
                     }
                   }} style={{ background: '#fff1f0', color: '#ff4d4f', border: '1px solid #ffa39e', borderRadius: '6px', padding: '3px 8px', fontSize: '11px' }}>해제</button>}
                 </div>
-                {myReason && <div style={{ fontSize: '13px', color: '#666', background: '#f8f9fa', padding: '8px 12px', borderRadius: '10px', marginBottom: '12px' }}>📝 {myReason.text}</div>}
+                {myReason && <div style={{ fontSize: '13px', color: '#666', background: '#f8f9fa', padding: '8px 12px', borderRadius: '10px', marginBottom: '12px' }}>사유: {myReason.text}</div>}
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {['복귀', '미복귀', '잔류'].map(status => (
                     <button key={status} style={{ flex: 1, padding: '12px 0', borderRadius: '10px', border: 'none', background: m.status === status ? (status === '복귀' ? '#2ecc71' : status === '잔류' ? '#3498db' : '#e74c3c') : '#f1f3f5', color: m.status === status ? 'white' : '#adb5bd', fontWeight: 'bold', opacity: (isMe || isSeniorKatusa) ? 1 : 0.4 }} onClick={() => {
@@ -188,31 +188,29 @@ export default function App() {
 
       {view === 'report' && (
         <div style={{ padding: '20px' }}>
-          {/* 외출 보고 작성 칸 */}
-          <div style={{ background: 'white', padding: '20px', borderRadius: '25px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '20px' }}>
-            <h4 style={{ margin: '0 0 15px 0', color: '#3b472e' }}>📍 오늘의 외출 보고 작성</h4>
+          <div style={{ background: 'white', padding: '20px', borderRadius: '25px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
+            <h4 style={{ margin: '0 0 15px 0', color: '#3b472e' }}>📝 외출 사유 작성</h4>
             {myId ? (
               <div style={{ display: 'flex', gap: '8px' }}>
-                <input style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #eee' }} placeholder="사유를 입력하세요 (예: 개인정비 외출)" value={outReason} onChange={e => setOutReason(e.target.value)} />
+                <input style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #eee' }} placeholder="사유를 입력하세요" value={outReason} onChange={e => setOutReason(e.target.value)} />
                 <button style={{ background: '#3b472e', color: 'white', border: 'none', borderRadius: '10px', padding: '0 20px', fontWeight: 'bold' }} onClick={submitReason}>보고</button>
               </div>
             ) : (
-              <p style={{ fontSize: '13px', color: '#ff4d4f', margin: 0 }}>'부대 관리' 탭에서 본인 이름을 클릭해 기기를 먼저 등록해야 작성할 수 있습니다.</p>
+              <p style={{ fontSize: '13px', color: '#ff4d4f', margin: 0 }}>'부대 관리'에서 기기 등록 후 작성 가능합니다.</p>
             )}
           </div>
 
-          {/* 외출자 명단 */}
-          <h4 style={{ margin: '0 0 12px 10px', color: '#777' }}>오늘의 외출자 명단</h4>
+          <h4 style={{ margin: '0 0 15px 10px', color: '#777' }}>오늘의 외출 보고 목록</h4>
           {Object.keys(reasons).length > 0 ? Object.keys(reasons).map(id => (
-            <div key={id} style={{ background: 'white', padding: '15px 20px', borderRadius: '20px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-              <div>
-                <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '2px' }}>{reasons[id].unit} · {reasons[id].time}</div>
-                <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{reasons[id].name}</div>
-                <div style={{ fontSize: '14px', color: '#555', marginTop: '4px' }}>{reasons[id].text}</div>
+            <div key={id} style={{ background: 'white', padding: '18px 20px', borderRadius: '22px', marginBottom: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                <span style={{ fontWeight: 'bold', fontSize: '17px', color: '#333' }}>{reasons[id].name}</span>
+                <span style={{ fontSize: '11px', color: '#bbb' }}>{reasons[id].time}</span>
               </div>
-              <div style={{ background: '#e9ce63', color: '#3b472e', padding: '4px 10px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>외출중</div>
+              <div style={{ fontSize: '14px', color: '#666', lineHeight: '1.4' }}>{reasons[id].text}</div>
+              <div style={{ fontSize: '11px', color: '#ddd', marginTop: '8px' }}>{reasons[id].unit}</div>
             </div>
-          )) : <div style={{ textAlign: 'center', padding: '40px', color: '#ccc' }}>오늘 보고된 외출 인원이 없습니다.</div>}
+          )) : <div style={{ textAlign: 'center', padding: '50px', color: '#ccc' }}>현재 보고된 내역이 없습니다.</div>}
         </div>
       )}
 
