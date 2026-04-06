@@ -19,6 +19,7 @@ const db = getDatabase(app);
 export default function App() {
   const [members, setMembers] = useState([]);
   const [logs, setLogs] = useState([]); 
+  const [reasons, setReasons] = useState({}); // 외출 사유 저장용
   const [view, setView] = useState('main'); 
   const [activeTab, setActiveTab] = useState('HHC');
   
@@ -27,11 +28,12 @@ export default function App() {
   const [newName, setNewName] = useState('');
   const [newUnit, setNewUnit] = useState('HHC');
   const [newJoinDate, setNewJoinDate] = useState(new Date().toISOString().split('T')[0]);
+  const [outReason, setOutReason] = useState(''); // 입력 중인 사유
 
   useEffect(() => {
     document.title = "Katusa Tracker";
 
-    // 멤버 데이터 동기화 및 유령 ID 체크
+    // 1. 멤버 데이터 & 자동 초기화 체크
     onValue(ref(db, 'members'), (snapshot) => {
       const data = snapshot.val();
       const memberList = data ? Object.keys(data).map(key => ({ ...data[key], id: key })) : [];
@@ -44,6 +46,22 @@ export default function App() {
       }
     });
 
+    // 2. 외출 사유 동기화 (오늘 00시 이후 데이터만)
+    onValue(ref(db, 'reasons'), (snapshot) => {
+      const data = snapshot.val() || {};
+      const todayStart = new Date().setHours(0, 0, 0, 0);
+      const filtered = {};
+      
+      // 오늘 작성된 사유만 필터링해서 state에 저장
+      Object.keys(data).forEach(id => {
+        if (data[id].timestamp >= todayStart) {
+          filtered[id] = data[id];
+        }
+      });
+      setReasons(filtered);
+    });
+
+    // 3. 로그 데이터
     onValue(ref(db, 'logs'), (snapshot) => {
       const data = snapshot.val();
       if (data) {
@@ -72,6 +90,22 @@ export default function App() {
     stay: currentMembers.filter(m => m.status === '잔류').length
   };
 
+  // 외출 사유 제출 로직
+  const submitReason = () => {
+    if (!myId) { alert("먼저 본인 이름을 클릭하여 기기를 등록하세요."); return; }
+    if (!outReason.trim()) { alert("사유를 입력해주세요."); return; }
+
+    const now = new Date();
+    set(ref(db, `reasons/${myId}`), {
+      text: outReason,
+      time: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+      timestamp: now.getTime()
+    }).then(() => {
+      setOutReason('');
+      alert("외출 사유가 등록되었습니다.");
+    });
+  };
+
   const addMember = () => {
     const trimmedName = newName.trim();
     if (!trimmedName) { alert("이름을 입력해 주세요."); return; }
@@ -91,7 +125,6 @@ export default function App() {
       return; 
     }
     if (member.isRegistered) { alert("이미 다른 기기에서 등록된 사람입니다."); return; }
-    
     if (window.confirm(`[${member.name}]님으로 이 기기를 등록 하시겠습니까?`)) {
       update(ref(db, `members/${member.id}`), { isRegistered: true });
       localStorage.setItem('katusa_my_id', member.id);
@@ -134,6 +167,25 @@ export default function App() {
       <div style={{ background: '#3b472e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
         <h2 style={{ margin: '0 0 15px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>Katusa Tracker</h2>
         
+        {/* 1. 외출 사유 작성 섹션 (본인 등록 시에만 노출) */}
+        {myId && (
+          <div style={{ background: 'rgba(255,255,255,0.1)', padding: '15px', borderRadius: '15px', marginBottom: '15px', border: '1px solid rgba(233,206,99,0.3)' }}>
+            <div style={{ fontSize: '12px', marginBottom: '8px', textAlign: 'left', color: '#e9ce63' }}>오늘의 외출 보고 ({me?.name})</div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input 
+                style={{ flex: 1, padding: '10px', borderRadius: '8px', border: 'none', fontSize: '14px' }} 
+                placeholder="사유를 입력하세요 (예: 병원)" 
+                value={outReason}
+                onChange={e => setOutReason(e.target.value)}
+              />
+              <button 
+                style={{ background: '#e9ce63', color: '#3b472e', border: 'none', borderRadius: '8px', padding: '0 15px', fontWeight: 'bold' }}
+                onClick={submitReason}
+              >보고</button>
+            </div>
+          </div>
+        )}
+
         {/* 인원 추가 폼 */}
         <div style={{ display: 'grid', gap: '10px', marginBottom: '20px', background: 'rgba(255,255,255,0.05)', padding: '15px', borderRadius: '15px' }}>
            <div style={{ display: 'flex', gap: '8px' }}>
@@ -148,7 +200,7 @@ export default function App() {
            </div>
         </div>
         
-        {/* 탭 메뉴 (캘린더 제거) */}
+        {/* 탭 메뉴 */}
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.15)', borderRadius: '12px', overflow: 'hidden' }}>
           <button style={{ flex: 1, padding: '14px 0', border: 'none', background: view === 'main' ? '#e9ce63' : 'transparent', color: view === 'main' ? '#3b472e' : 'white', fontWeight: 'bold' }} onClick={() => setView('main')}>부대 관리</button>
           <button style={{ flex: 1, padding: '14px 0', border: 'none', background: view === 'logs' ? '#e9ce63' : 'transparent', color: view === 'logs' ? '#3b472e' : 'white', fontWeight: 'bold' }} onClick={() => setView('logs')}>로그 기록</button>
@@ -175,6 +227,7 @@ export default function App() {
               const isTargetSenior = m.name === "신준섭";
               const pct = calculatePercent(m.joinDate);
               const canEdit = isMe || isSeniorKatusa;
+              const myReason = reasons[m.id]; // 해당 인원의 외출 사유
 
               return (
                 <div key={m.id} className={isTargetSenior ? "senior-card" : ""} style={{ 
@@ -192,6 +245,14 @@ export default function App() {
                     </div>
                     {isMe && <button onClick={() => unregisterDevice(m)} style={{ background: isTargetSenior ? '#333' : '#fff1f0', color: '#ff4d4f', border: '1px solid #ffa39e', borderRadius: '6px', padding: '4px 8px', fontSize: '11px' }}>해제</button>}
                   </div>
+
+                  {/* 사유 표시 부분 */}
+                  {myReason && (
+                    <div style={{ marginBottom: '12px', fontSize: '13px', color: isTargetSenior ? '#e9ce63' : '#555', background: isTargetSenior ? '#2a2a2a' : '#f8f9fa', padding: '8px 12px', borderRadius: '10px' }}>
+                      <b>사유:</b> {myReason.text} <span style={{ fontSize: '11px', color: '#aaa', marginLeft: '5px' }}>({myReason.time})</span>
+                    </div>
+                  )}
+
                   <div style={{ width: '100%', height: '7px', background: isTargetSenior ? '#333' : '#f1f3f5', borderRadius: '4px', marginBottom: '22px', overflow: 'hidden' }}>
                     <div style={{ width: `${pct}%`, height: '100%', background: isTargetSenior ? 'linear-gradient(90deg, #bf953f, #e9ce63)' : '#73c088' }} />
                   </div>
@@ -211,18 +272,16 @@ export default function App() {
         </>
       ) : (
         <div style={{ padding: '20px' }}>
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <h4 style={{ margin: 0, color: '#555' }}>최근 로그</h4>
-              {isSeniorKatusa && <button onClick={() => remove(ref(db, 'logs'))} style={{ color: '#ff4d4f', border: 'none', background: 'none', fontSize: '12px' }}>전체 초기화</button>}
-            </div>
-            {logs.map(log => (
-              <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', borderRadius: '15px', marginBottom: '10px' }}>
-                <div><div style={{ fontSize: '11px', color: '#aaa' }}>{log.dateString} {log.timeString}</div><b style={{ fontSize: '16px' }}>{log.name}</b></div>
-                <div style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', color: 'white', background: log.status === '복귀' ? '#2ecc71' : log.status === '잔류' ? '#3498db' : '#e74c3c' }}>{log.status}</div>
-              </div>
-            ))}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h4 style={{ margin: 0, color: '#555' }}>최근 로그</h4>
+            {isSeniorKatusa && <button onClick={() => remove(ref(db, 'logs'))} style={{ color: '#ff4d4f', border: 'none', background: 'none', fontSize: '12px' }}>전체 초기화</button>}
           </div>
+          {logs.map(log => (
+            <div key={log.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', background: 'white', borderRadius: '15px', marginBottom: '10px' }}>
+              <div><div style={{ fontSize: '11px', color: '#aaa' }}>{log.dateString} {log.timeString}</div><b style={{ fontSize: '16px' }}>{log.name}</b></div>
+              <div style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', color: 'white', background: log.status === '복귀' ? '#2ecc71' : log.status === '잔류' ? '#3498db' : '#e74c3c' }}>{log.status}</div>
+            </div>
+          ))}
         </div>
       )}
     </div>
