@@ -205,18 +205,18 @@ export default function App() {
       {view === 'report' && (
         <div style={{ padding: '20px' }}>
           <div style={{ background: 'white', padding: '20px', borderRadius: '25px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
-            <h4 style={{ margin: '0 0 15px 0', color: '#3b472e' }}>📝 외출 사유 작성</h4>
+            <h4 style={{ margin: '0 0 15px 0', color: '#3b472e' }}>📝 외출 사유 작성 📝</h4>
             {myId ? (
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #eee' }} placeholder="사유를 입력하세요" value={outReason} onChange={e => setOutReason(e.target.value)} />
-                <button style={{ background: '#3b472e', color: 'white', border: 'none', borderRadius: '10px', padding: '0 20px', fontWeight: 'bold' }} onClick={submitReason}>보고</button>
+                <button style={{ background: '#3b472e', color: 'white', border: 'none', borderRadius: '10px', padding: '0 20px', fontWeight: 'bold' }} onClick={submitReason}>입력</button>
               </div>
             ) : (
               <p style={{ fontSize: '13px', color: '#ff4d4f', margin: 0 }}>'부대 관리'에서 기기 등록 후 작성 가능합니다.</p>
             )}
           </div>
 
-          <h4 style={{ margin: '0 0 15px 10px', color: '#777' }}>오늘의 외출 보고 목록</h4>
+          <h4 style={{ margin: '0 0 15px 10px', color: '#777' }}>오늘의 외출 신청 목록</h4>
           {Object.keys(reasons).length > 0 ? Object.keys(reasons).map(id => {
             const isMyPost = id === myId; // 내 글인지 확인
             const isEditing = editingId === id;
