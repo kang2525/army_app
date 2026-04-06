@@ -148,7 +148,6 @@ export default function App() {
           {currentMembers.map(m => {
             const isMe = m.id === myId;
             const pct = calculatePercent(m.joinDate);
-            const myReason = reasons[m.id];
             return (
               <div key={m.id} className={m.name === "신준섭" ? "senior-card" : ""} style={{ background: 'white', padding: '20px', borderRadius: '25px', margin: '0 15px 15px', border: isMe ? '2px solid #e9ce63' : 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', position: 'relative' }}>
                 <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -171,7 +170,9 @@ export default function App() {
                     }
                   }} style={{ background: '#fff1f0', color: '#ff4d4f', border: '1px solid #ffa39e', borderRadius: '6px', padding: '3px 8px', fontSize: '11px' }}>해제</button>}
                 </div>
-                {myReason && <div style={{ fontSize: '13px', color: '#666', background: '#f8f9fa', padding: '8px 12px', borderRadius: '10px', marginBottom: '12px' }}>사유: {myReason.text}</div>}
+                {/* 부대 관리 탭의 개별 카드 내 사유 표시 부분은 
+                   사용자 요청에 따라 삭제했습니다.
+                */}
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {['복귀', '미복귀', '잔류'].map(status => (
                     <button key={status} style={{ flex: 1, padding: '12px 0', borderRadius: '10px', border: 'none', background: m.status === status ? (status === '복귀' ? '#2ecc71' : status === '잔류' ? '#3498db' : '#e74c3c') : '#f1f3f5', color: m.status === status ? 'white' : '#adb5bd', fontWeight: 'bold', opacity: (isMe || isSeniorKatusa) ? 1 : 0.4 }} onClick={() => {
@@ -207,7 +208,7 @@ export default function App() {
                 <span style={{ fontWeight: 'bold', fontSize: '17px', color: '#333' }}>{reasons[id].name}</span>
                 <span style={{ fontSize: '11px', color: '#bbb' }}>{reasons[id].time}</span>
               </div>
-              <div style={{ fontSize: '14px', color: '#666', lineHeight: '1.4' }}>{reasons[id].text}</div>
+              <div style={{ fontSize: '14px', color: '#555', lineHeight: '1.4' }}>{reasons[id].text}</div>
               <div style={{ fontSize: '11px', color: '#ddd', marginTop: '8px' }}>{reasons[id].unit}</div>
             </div>
           )) : <div style={{ textAlign: 'center', padding: '50px', color: '#ccc' }}>현재 보고된 내역이 없습니다.</div>}
