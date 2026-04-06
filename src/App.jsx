@@ -28,7 +28,10 @@ export default function App() {
   const [newName, setNewName] = useState('');
   const [newUnit, setNewUnit] = useState('HHC');
   const [newJoinDate, setNewJoinDate] = useState(new Date().toISOString().split('T')[0]);
+  
   const [outReason, setOutReason] = useState(''); 
+  const [editingId, setEditingId] = useState(null); // 수정 중인 항목 ID
+  const [editValue, setEditValue] = useState(''); // 수정 중인 텍스트
 
   useEffect(() => {
     document.title = "Katusa Tracker";
@@ -78,8 +81,9 @@ export default function App() {
       return a.name.localeCompare(b.name, 'ko');
     });
 
+  // 사유 제출 (새로 등록)
   const submitReason = () => {
-    if (!myId) { alert("부대 관리 탭에서 본인 이름을 클릭하여 기기를 먼저 등록하세요."); return; }
+    if (!myId) { alert("기기 등록을 먼저 해주세요."); return; }
     if (!outReason.trim()) { alert("사유를 입력해주세요."); return; }
 
     const now = new Date();
@@ -91,8 +95,24 @@ export default function App() {
       timestamp: now.getTime()
     }).then(() => {
       setOutReason('');
-      alert("작성되었습니다.");
+      alert("보고되었습니다.");
     });
+  };
+
+  // 사유 수정 저장
+  const saveEdit = (id) => {
+    if (!editValue.trim()) return;
+    update(ref(db, `reasons/${id}`), { text: editValue }).then(() => {
+      setEditingId(null);
+      setEditValue('');
+    });
+  };
+
+  // 사유 삭제
+  const deleteReason = (id) => {
+    if (window.confirm("보고된 외출 사유를 삭제하시겠습니까?")) {
+      remove(ref(db, `reasons/${id}`));
+    }
   };
 
   return (
@@ -108,7 +128,6 @@ export default function App() {
       <div style={{ background: '#3b472e', padding: '30px 20px 20px 20px', borderRadius: '0 0 30px 30px', color: 'white', textAlign: 'center' }}>
         <h2 style={{ margin: '0 0 20px 0', color: '#e9ce63', fontSize: '28px', fontWeight: '900' }}>Katusa Tracker</h2>
         
-        {/* 탭 메뉴 */}
         <div style={{ display: 'flex', background: 'rgba(255,255,255,0.15)', borderRadius: '12px', overflow: 'hidden' }}>
           <button style={{ flex: 1, padding: '14px 0', border: 'none', background: view === 'main' ? '#e9ce63' : 'transparent', color: view === 'main' ? '#3b472e' : 'white', fontWeight: 'bold', fontSize: '13px' }} onClick={() => setView('main')}>부대 관리</button>
           <button style={{ flex: 1, padding: '14px 0', border: 'none', background: view === 'report' ? '#e9ce63' : 'transparent', color: view === 'report' ? '#3b472e' : 'white', fontWeight: 'bold', fontSize: '13px' }} onClick={() => setView('report')}>외출 보고</button>
@@ -118,7 +137,6 @@ export default function App() {
 
       {view === 'main' && (
         <>
-          {/* 인원 추가 폼 */}
           <div style={{ padding: '20px 15px 0' }}>
             <div style={{ display: 'grid', gap: '8px', background: 'white', padding: '15px', borderRadius: '20px', boxShadow: '0 4px 10px rgba(0,0,0,0.03)' }}>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -170,9 +188,6 @@ export default function App() {
                     }
                   }} style={{ background: '#fff1f0', color: '#ff4d4f', border: '1px solid #ffa39e', borderRadius: '6px', padding: '3px 8px', fontSize: '11px' }}>해제</button>}
                 </div>
-                {/* 부대 관리 탭의 개별 카드 내 사유 표시 부분은 
-                   사용자 요청에 따라 삭제했습니다.
-                */}
                 <div style={{ display: 'flex', gap: '8px' }}>
                   {['복귀', '미복귀', '잔류'].map(status => (
                     <button key={status} style={{ flex: 1, padding: '12px 0', borderRadius: '10px', border: 'none', background: m.status === status ? (status === '복귀' ? '#2ecc71' : status === '잔류' ? '#3498db' : '#e74c3c') : '#f1f3f5', color: m.status === status ? 'white' : '#adb5bd', fontWeight: 'bold', opacity: (isMe || isSeniorKatusa) ? 1 : 0.4 }} onClick={() => {
@@ -190,11 +205,11 @@ export default function App() {
       {view === 'report' && (
         <div style={{ padding: '20px' }}>
           <div style={{ background: 'white', padding: '20px', borderRadius: '25px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
-            <h4 style={{ margin: '0 0 15px 0', color: '#3b472e' }}>📝 외출 사유 작성 📝</h4>
+            <h4 style={{ margin: '0 0 15px 0', color: '#3b472e' }}>📝 외출 사유 작성</h4>
             {myId ? (
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input style={{ flex: 1, padding: '12px', borderRadius: '10px', border: '1px solid #eee' }} placeholder="사유를 입력하세요" value={outReason} onChange={e => setOutReason(e.target.value)} />
-                <button style={{ background: '#3b472e', color: 'white', border: 'none', borderRadius: '10px', padding: '0 20px', fontWeight: 'bold' }} onClick={submitReason}>작성</button>
+                <button style={{ background: '#3b472e', color: 'white', border: 'none', borderRadius: '10px', padding: '0 20px', fontWeight: 'bold' }} onClick={submitReason}>보고</button>
               </div>
             ) : (
               <p style={{ fontSize: '13px', color: '#ff4d4f', margin: 0 }}>'부대 관리'에서 기기 등록 후 작성 가능합니다.</p>
@@ -202,16 +217,45 @@ export default function App() {
           </div>
 
           <h4 style={{ margin: '0 0 15px 10px', color: '#777' }}>오늘의 외출 보고 목록</h4>
-          {Object.keys(reasons).length > 0 ? Object.keys(reasons).map(id => (
-            <div key={id} style={{ background: 'white', padding: '18px 20px', borderRadius: '22px', marginBottom: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                <span style={{ fontWeight: 'bold', fontSize: '17px', color: '#333' }}>{reasons[id].name}</span>
-                <span style={{ fontSize: '11px', color: '#bbb' }}>{reasons[id].time}</span>
+          {Object.keys(reasons).length > 0 ? Object.keys(reasons).map(id => {
+            const isMyPost = id === myId; // 내 글인지 확인
+            const isEditing = editingId === id;
+
+            return (
+              <div key={id} style={{ background: 'white', padding: '18px 20px', borderRadius: '22px', marginBottom: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                  <div>
+                    <span style={{ fontWeight: 'bold', fontSize: '17px', color: '#333' }}>{reasons[id].name}</span>
+                    <span style={{ fontSize: '11px', color: '#bbb', marginLeft: '8px' }}>{reasons[id].time}</span>
+                  </div>
+                  {/* 내 글일 때만 수정/삭제 버튼 노출 */}
+                  {isMyPost && !isEditing && (
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button onClick={() => { setEditingId(id); setEditValue(reasons[id].text); }} style={{ border: 'none', background: 'none', color: '#3498db', fontSize: '12px', cursor: 'pointer' }}>수정</button>
+                      <button onClick={() => deleteReason(id)} style={{ border: 'none', background: 'none', color: '#e74c3c', fontSize: '12px', cursor: 'pointer' }}>삭제</button>
+                    </div>
+                  )}
+                </div>
+
+                {isEditing ? (
+                  <div style={{ display: 'flex', gap: '5px', marginTop: '5px' }}>
+                    <input 
+                      style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #ddd', fontSize: '14px' }}
+                      value={editValue}
+                      onChange={e => setEditValue(e.target.value)}
+                    />
+                    <button onClick={() => saveEdit(id)} style={{ background: '#2ecc71', color: 'white', border: 'none', borderRadius: '6px', padding: '0 10px', fontSize: '12px' }}>저장</button>
+                    <button onClick={() => setEditingId(null)} style={{ background: '#95a5a6', color: 'white', border: 'none', borderRadius: '6px', padding: '0 10px', fontSize: '12px' }}>취소</button>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '14px', color: '#555', lineHeight: '1.4' }}>{reasons[id].text}</div>
+                    <div style={{ fontSize: '11px', color: '#ddd', marginTop: '8px' }}>{reasons[id].unit}</div>
+                  </>
+                )}
               </div>
-              <div style={{ fontSize: '14px', color: '#555', lineHeight: '1.4' }}>{reasons[id].text}</div>
-              <div style={{ fontSize: '11px', color: '#ddd', marginTop: '8px' }}>{reasons[id].unit}</div>
-            </div>
-          )) : <div style={{ textAlign: 'center', padding: '50px', color: '#ccc' }}>현재 보고된 내역이 없습니다.</div>}
+            );
+          }) : <div style={{ textAlign: 'center', padding: '50px', color: '#ccc' }}>현재 보고된 내역이 없습니다.</div>}
         </div>
       )}
 
